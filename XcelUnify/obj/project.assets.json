@@ -14,11 +14,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\_work\\melb\\2025\\Windows\\XcelUnify\\XcelUnify\\XcelUnify.csproj",
+      "projectUniqueName": "C:\\_work\\melb\\2025\\safe\\Application\\XcelUnify\\XcelUnify\\XcelUnify.csproj",
       "projectName": "XcelUnify",
-      "projectPath": "C:\\_work\\melb\\2025\\Windows\\XcelUnify\\XcelUnify\\XcelUnify.csproj",
+      "projectPath": "C:\\_work\\melb\\2025\\safe\\Application\\XcelUnify\\XcelUnify\\XcelUnify.csproj",
       "packagesPath": "C:\\Users\\hienc\\.nuget\\packages\\",
-      "outputPath": "C:\\_work\\melb\\2025\\Windows\\XcelUnify\\XcelUnify\\obj\\",
+      "outputPath": "C:\\_work\\melb\\2025\\safe\\Application\\XcelUnify\\XcelUnify\\obj\\",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
         "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
