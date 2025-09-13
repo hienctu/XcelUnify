@@ -201,5 +201,101 @@ namespace XcelUnify
                 GC.WaitForPendingFinalizers();
             }
         }
+
+        private void UnifyBtn_Click(object sender, EventArgs e)
+        {
+            var unifyFolder = ConfigManager.Unify_Folder;
+            var doneFolder = ConfigManager.Done_Folder_Format;
+            var reportPath = ConfigManager.Report_File_Format;
+
+            // Replace datetime format (yyyyMMddHHmm)
+            var timestamp = DateTime.Now.ToString("yyyyMMddHHmm");
+            var reportFileName = ConfigManager.Report_File_Format.Replace("yyyyMMddHHmm", timestamp);
+            reportPath = Path.Combine(unifyFolder, reportFileName);
+            doneFolder = Path.Combine(unifyFolder, doneFolder.Replace("yyyyMMddHHmm", timestamp));
+
+            //Create folder to store successfully processed files
+            Directory.CreateDirectory(doneFolder);
+
+            // Kill all running Excel processes before starting
+            foreach (var process in System.Diagnostics.Process.GetProcessesByName("EXCEL"))
+            {
+                try { process.Kill(); }
+                catch { /* ignore if cannot kill */ }
+            }
+
+            Application excelApp = new Application();
+            Workbook reportWb = excelApp.Workbooks.Add();
+            Worksheet reportWs = (Worksheet)reportWb.Worksheets[1];
+
+            int reportRow = 1;
+
+            try
+            {
+                foreach (var file in Directory.GetFiles(unifyFolder, "*.xlsx", SearchOption.TopDirectoryOnly))
+                {
+                    Workbook srcWb = excelApp.Workbooks.Open(file);
+                    Worksheet srcWs = (Worksheet)srcWb.Worksheets[ConfigManager.Workload_Main_Sheet];
+
+                    // Mapping
+                    reportWs.Cells[reportRow, 1] = (srcWs.Cells[3, 3] as Range)?.Value2?.ToString() ?? ""; // C3 -> A1
+                    reportWs.Cells[reportRow, 2] = (srcWs.Cells[5, 3] as Range)?.Value2?.ToString() ?? ""; // C5 -> B1
+                    reportWs.Cells[reportRow, 3] = (srcWs.Cells[3, 5] as Range)?.Value2?.ToString() ?? ""; // E3 -> C1
+
+                    // Find START and END in column A
+                    int startRow = 0, endRow = 0;
+                    int lastRow = srcWs.UsedRange.Rows.Count;
+                    for (int r = 1; r <= lastRow; r++)
+                    {
+                        var val = (srcWs.Cells[r, 1] as Range)?.Value2?.ToString();
+                        if (val == "START") startRow = r + 1;
+                        if (val == "END") { endRow = r - 1; break; }
+                    }
+
+                    // For loop row from START to END (column A)
+                    for (int r = startRow; r <= endRow; r++)
+                    {
+                        var bVal = (srcWs.Cells[r, 2] as Range)?.Value2?.ToString();
+
+                        if (!string.IsNullOrWhiteSpace(bVal))
+                        {
+                            // Repeat the header mappings for each copied row
+                            reportWs.Cells[reportRow, 1] = (srcWs.Cells[3, 3] as Range)?.Value2?.ToString() ?? ""; // C3 -> A
+                            reportWs.Cells[reportRow, 2] = (srcWs.Cells[5, 3] as Range)?.Value2?.ToString() ?? ""; // C5 -> B
+                            reportWs.Cells[reportRow, 3] = (srcWs.Cells[3, 5] as Range)?.Value2?.ToString() ?? ""; // E3 -> C
+
+                            // Copy column B value
+                            reportWs.Cells[reportRow, 4] = bVal; // B(row) -> D
+                            reportRow++;
+                        }
+                    }
+
+                    srcWb.Close(false);
+                    System.Runtime.InteropServices.Marshal.ReleaseComObject(srcWs);
+                    System.Runtime.InteropServices.Marshal.ReleaseComObject(srcWb);
+
+                    // Move file to Done folder
+                    var destFile = Path.Combine(doneFolder, Path.GetFileName(file));
+                    File.Move(file, destFile);
+                }
+
+                reportWb.SaveAs(reportPath);
+                MessageBox.Show($"Report generated: {reportPath}", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            finally
+            {
+                reportWb.Close(false);
+                excelApp.Quit();
+                System.Runtime.InteropServices.Marshal.ReleaseComObject(reportWs);
+                System.Runtime.InteropServices.Marshal.ReleaseComObject(reportWb);
+                System.Runtime.InteropServices.Marshal.ReleaseComObject(excelApp);
+                GC.Collect();
+                GC.WaitForPendingFinalizers();
+            }
+        }
     }
 }

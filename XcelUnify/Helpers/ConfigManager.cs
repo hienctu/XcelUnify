@@ -8,6 +8,10 @@ namespace XcelUnify.Helpers
         public static string Master_File { get; private set; } = string.Empty;
         public static string Template_File { get; private set; } = string.Empty;
         public static string Output_Location { get; private set; } = string.Empty;
+        public static string Unify_Folder { get; private set; } = string.Empty;
+        public static string Done_Folder_Format { get; private set; } = "yyyyMMddHHmm_Done";
+        public static string Report_File_Format { get; private set; } = "yyyyMMddHHmm_UnifyRpt.xlsx";
+        public static int Workload_Main_Sheet { get; private set; } = 2;
         public static void Init()
         {
             try
@@ -23,6 +27,10 @@ namespace XcelUnify.Helpers
                     config.TryGetValue("MasterDataFilePath", out var masterFile);
                     config.TryGetValue("TemplateFilePath", out var templateFile);
                     config.TryGetValue("Output", out var output);
+                    config.TryGetValue("Unify", out var unifyFolder);
+                    config.TryGetValue("DoneFolderFormat", out var doneFolderFormat);
+                    config.TryGetValue("ReportFileFormat", out var reportFileFormat);
+                    config.TryGetValue("WorkloadMainSheet", out var workloadMainSheet);
 
                     Master_File = !string.IsNullOrEmpty(masterFile)
                         ? Path.Combine(AppContext.BaseDirectory, masterFile)
@@ -35,12 +43,30 @@ namespace XcelUnify.Helpers
                     Output_Location = !string.IsNullOrEmpty(output)
                         ? Path.Combine(AppContext.BaseDirectory, output)
                         : string.Empty;
+
+                    Unify_Folder = !string.IsNullOrEmpty(unifyFolder)
+                        ? Path.Combine(AppContext.BaseDirectory, unifyFolder)
+                        : string.Empty;
+
+                    Done_Folder_Format = !string.IsNullOrEmpty(doneFolderFormat)
+                        ? doneFolderFormat
+                        : "yyyyMMddHHmm_Done";
+
+                    Report_File_Format = !string.IsNullOrEmpty(reportFileFormat)
+                        ? reportFileFormat
+                        : "yyyyMMddHHmm_UnifyRpt.xlsx";
+
+                    Workload_Main_Sheet = !string.IsNullOrEmpty(workloadMainSheet) ?
+                        System.Convert.ToInt32(workloadMainSheet) : 2;
                 }
                 else
                 {
                     Master_File = string.Empty;
                     Template_File = string.Empty;
                     Output_Location = string.Empty;
+                    Unify_Folder = string.Empty;
+                    Done_Folder_Format = "yyyyMMddHHmm_Done";
+                    Report_File_Format = "yyyyMMddHHmm_UnifyRpt.xlsx";
                 }
             }
             catch
@@ -48,6 +74,9 @@ namespace XcelUnify.Helpers
                 Master_File = string.Empty;
                 Template_File = string.Empty;
                 Output_Location = string.Empty;
+                Unify_Folder = string.Empty;
+                Done_Folder_Format = "yyyyMMddHHmm_Done";
+                Report_File_Format = "yyyyMMddHHmm_UnifyRpt.xlsx";
             }
         }
 

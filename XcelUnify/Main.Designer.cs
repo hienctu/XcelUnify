@@ -29,23 +29,35 @@
         private void InitializeComponent()
         {
             btnGenerate = new Button();
+            UnifyBtn = new Button();
             SuspendLayout();
             // 
             // btnGenerate
             // 
-            btnGenerate.Location = new Point(96, 226);
+            btnGenerate.Location = new Point(12, 30);
             btnGenerate.Name = "btnGenerate";
             btnGenerate.Size = new Size(75, 23);
             btnGenerate.TabIndex = 0;
-            btnGenerate.Text = "button1";
+            btnGenerate.Text = "Generate";
             btnGenerate.UseVisualStyleBackColor = true;
             btnGenerate.Click += btnGenerate_Click;
+            // 
+            // UnifyBtn
+            // 
+            UnifyBtn.Location = new Point(12, 74);
+            UnifyBtn.Name = "UnifyBtn";
+            UnifyBtn.Size = new Size(75, 23);
+            UnifyBtn.TabIndex = 1;
+            UnifyBtn.Text = "Unify";
+            UnifyBtn.UseVisualStyleBackColor = true;
+            UnifyBtn.Click += UnifyBtn_Click;
             // 
             // Main
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(728, 427);
+            Controls.Add(UnifyBtn);
             Controls.Add(btnGenerate);
             Name = "Main";
             Text = "Excel Generator & Unify Tool";
@@ -55,5 +67,6 @@
         #endregion
 
         private Button btnGenerate;
+        private Button UnifyBtn;
     }
 }
