@@ -70,3 +70,5 @@ docker-compose.override.yml
 
 # Temporary files
 ~$*
+/XcelUnify/obj/Debug/net8.0-windows/XcelUnify.AssemblyInfo.cs
+/XcelUnify/obj/Debug/net8.0-windows/XcelUnify.AssemblyInfoInputs.cache
