@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("XcelUnify")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+00fb87c203e057f7816028a8018fea27a0c89758")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+e635c4e11a0371e4de28823067dd8c0b17ed90a4")]
 [assembly: System.Reflection.AssemblyProductAttribute("XcelUnify")]
 [assembly: System.Reflection.AssemblyTitleAttribute("XcelUnify")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
