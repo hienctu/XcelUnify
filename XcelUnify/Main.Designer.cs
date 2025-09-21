@@ -40,13 +40,13 @@
             txtMasterFile = new TextBox();
             label1 = new Label();
             groupBox2 = new GroupBox();
+            btnClose = new Button();
             btnCloseExcels = new Button();
             progressBar = new ProgressBar();
             lblActionDisplay = new Label();
             lstReport = new ListBox();
             lblReport = new Label();
             btnViewOutput = new Button();
-            btnClose = new Button();
             groupBox1.SuspendLayout();
             groupBox2.SuspendLayout();
             SuspendLayout();
@@ -175,6 +175,16 @@
             groupBox2.TabStop = false;
             groupBox2.Text = "Action";
             // 
+            // btnClose
+            // 
+            btnClose.Location = new Point(13, 270);
+            btnClose.Name = "btnClose";
+            btnClose.Size = new Size(113, 23);
+            btnClose.TabIndex = 3;
+            btnClose.Text = "Close Form";
+            btnClose.UseVisualStyleBackColor = true;
+            btnClose.Click += btnClose_Click;
+            // 
             // btnCloseExcels
             // 
             btnCloseExcels.Location = new Point(13, 39);
@@ -219,24 +229,14 @@
             // 
             // btnViewOutput
             // 
-            btnViewOutput.Location = new Point(427, 261);
+            btnViewOutput.Location = new Point(563, 261);
             btnViewOutput.Name = "btnViewOutput";
-            btnViewOutput.Size = new Size(282, 23);
+            btnViewOutput.Size = new Size(146, 23);
             btnViewOutput.TabIndex = 10;
             btnViewOutput.Text = "btnViewOutput";
             btnViewOutput.UseVisualStyleBackColor = true;
             btnViewOutput.Visible = false;
             btnViewOutput.Click += btnViewOutput_Click;
-            // 
-            // btnClose
-            // 
-            btnClose.Location = new Point(13, 270);
-            btnClose.Name = "btnClose";
-            btnClose.Size = new Size(113, 23);
-            btnClose.TabIndex = 3;
-            btnClose.Text = "Close Form";
-            btnClose.UseVisualStyleBackColor = true;
-            btnClose.Click += btnClose_Click;
             // 
             // Main
             // 

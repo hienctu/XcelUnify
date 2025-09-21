@@ -8,6 +8,7 @@ namespace XcelUnify
 {
     public partial class Main : Form
     {
+        private string rptFolderPath;
         public Main()
         {
             InitializeComponent();
@@ -30,12 +31,15 @@ namespace XcelUnify
                 ShowAlways = true    // Ensures the tooltip shows even if the form is inactive
             };
             toolTips.SetToolTip(btnCloseExcels, "Close all currently running Excel processes (recommended before starting data generation or collection)");
+            toolTips.SetToolTip(btnGenerate, "Generate individual workload files for only Coursework subject based on the master file and template SAFES file");
+            toolTips.SetToolTip(UnifyBtn, "Unify all individual workload files in the specified folder into a single report file and move processed files to a 'Done' folder");
 
         }
 
         private async void btnGenerate_Click(object sender, EventArgs e)
         {
             // Change the cursor to "Wait"
+            lstReport.Items.Clear();
             Cursor = Cursors.WaitCursor;
 
             Invoke(new System.Action(() =>
@@ -285,8 +289,19 @@ namespace XcelUnify
             }
         }
 
-        private void UnifyBtn_Click(object sender, EventArgs e)
+        private async void UnifyBtn_Click(object sender, EventArgs e)
         {
+            lstReport.Items.Clear();
+            Cursor = Cursors.WaitCursor;
+
+            Invoke(new System.Action(() =>
+            {
+                lblActionDisplay.Visible = true;
+                lblActionDisplay.Text = "Unifying SAFES workload files...";
+                progressBar.Visible = true;
+                progressBar.Style = ProgressBarStyle.Marquee;
+            }));
+
             var unifyFolder = ConfigManager.Unify_Folder;
             var doneFolder = ConfigManager.Done_Folder_Format;
             var reportPath = ConfigManager.Report_File_Format;
@@ -294,9 +309,9 @@ namespace XcelUnify
             // Replace datetime format (yyyyMMddHHmm)
             var timestamp = DateTime.Now.ToString("yyyyMMddHHmm");
             var reportFileName = ConfigManager.Report_File_Format.Replace("yyyyMMddHHmm", timestamp);
-            reportPath = Path.Combine(unifyFolder, reportFileName);
             doneFolder = Path.Combine(unifyFolder, doneFolder.Replace("yyyyMMddHHmm", timestamp));
-
+            reportPath = Path.Combine(doneFolder, reportFileName);
+            rptFolderPath = doneFolder;
             //Create folder to store successfully processed files
             Directory.CreateDirectory(doneFolder);
 
@@ -315,55 +330,102 @@ namespace XcelUnify
 
             try
             {
-                foreach (var file in Directory.GetFiles(unifyFolder, "*.xlsx", SearchOption.TopDirectoryOnly))
+                // Add headers to the report
+                string[] headers = new string[]
                 {
-                    Workbook srcWb = excelApp.Workbooks.Open(file);
-                    Worksheet srcWs = (Worksheet)srcWb.Worksheets[ConfigManager.Workload_Main_Sheet];
+                    "Subject Code", "Subject Title", "Study Period", "Coordinator",
+                    "Lecture Initial", "Lecture Repeat", "Tute/WS Initial", "Tute/WS Repeat",
+                    "Practical Initial", "Practical Repeat", "FieldTrip/Excursion", "Marking"
+                };
 
-                    // Mapping
-                    reportWs.Cells[reportRow, 1] = (srcWs.Cells[3, 3] as Range)?.Value2?.ToString() ?? ""; // C3 -> A1
-                    reportWs.Cells[reportRow, 2] = (srcWs.Cells[5, 3] as Range)?.Value2?.ToString() ?? ""; // C5 -> B1
-                    reportWs.Cells[reportRow, 3] = (srcWs.Cells[3, 5] as Range)?.Value2?.ToString() ?? ""; // E3 -> C1
-
-                    // Find START and END in column A
-                    int startRow = 0, endRow = 0;
-                    int lastRow = srcWs.UsedRange.Rows.Count;
-                    for (int r = 1; r <= lastRow; r++)
-                    {
-                        var val = (srcWs.Cells[r, 1] as Range)?.Value2?.ToString();
-                        if (val == "START") startRow = r + 1;
-                        if (val == "END") { endRow = r - 1; break; }
-                    }
-
-                    // For loop row from START to END (column A)
-                    for (int r = startRow; r <= endRow; r++)
-                    {
-                        var bVal = (srcWs.Cells[r, 2] as Range)?.Value2?.ToString();
-
-                        if (!string.IsNullOrWhiteSpace(bVal))
-                        {
-                            // Repeat the header mappings for each copied row
-                            reportWs.Cells[reportRow, 1] = (srcWs.Cells[3, 3] as Range)?.Value2?.ToString() ?? ""; // C3 -> A
-                            reportWs.Cells[reportRow, 2] = (srcWs.Cells[5, 3] as Range)?.Value2?.ToString() ?? ""; // C5 -> B
-                            reportWs.Cells[reportRow, 3] = (srcWs.Cells[3, 5] as Range)?.Value2?.ToString() ?? ""; // E3 -> C
-
-                            // Copy column B value
-                            reportWs.Cells[reportRow, 4] = bVal; // B(row) -> D
-                            reportRow++;
-                        }
-                    }
-
-                    srcWb.Close(false);
-                    System.Runtime.InteropServices.Marshal.ReleaseComObject(srcWs);
-                    System.Runtime.InteropServices.Marshal.ReleaseComObject(srcWb);
-
-                    // Move file to Done folder
-                    var destFile = Path.Combine(doneFolder, Path.GetFileName(file));
-                    File.Move(file, destFile);
+                for (int col = 1; col <= headers.Length; col++)
+                {
+                    reportWs.Cells[reportRow, col] = headers[col - 1];
                 }
 
+                // Apply formatting: gray background and bold text
+                Range headerRange = reportWs.Range[reportWs.Cells[reportRow, 1], reportWs.Cells[reportRow, headers.Length]];
+                headerRange.Interior.Color = ColorTranslator.ToOle(Color.LightGray);
+                headerRange.Font.Bold = true;
+
+                reportRow++; // Move to the next row for data
+                await Task.Run(async () =>
+                {
+                    var filesCount = Directory.GetFiles(unifyFolder, "*.xlsx", SearchOption.TopDirectoryOnly).Count();
+                    foreach (var file in Directory.GetFiles(unifyFolder, "*.xlsx", SearchOption.TopDirectoryOnly))
+                    {
+                        Workbook srcWb = excelApp.Workbooks.Open(file);
+                        Worksheet srcWs = (Worksheet)srcWb.Worksheets[ConfigManager.Workload_Main_Sheet];
+                        // Find START and END in column A
+                        int startRow = ConfigManager.SafesStaff_Start_Row,
+                            endRow = ConfigManager.SafesStaff_End_Row;
+
+                        // For loop row from START to END (column A)
+                        for (int r = startRow; r <= endRow; r++)
+                        {
+                            var bVal = (srcWs.Cells[r, 2] as Range)?.Value2?.ToString();
+
+                            if (!string.IsNullOrWhiteSpace(bVal))
+                            {
+                                // Repeat the header mappings for each copied row
+                                reportWs.Cells[reportRow, 1] = (srcWs.Cells[3, 3] as Range)?.Value2?.ToString() ?? ""; // C3 -> A1 Subject Code
+                                reportWs.Cells[reportRow, 2] = (srcWs.Cells[3, 4] as Range)?.Value2?.ToString() ?? ""; // C5 -> B1 Subject Name
+                                reportWs.Cells[reportRow, 3] = (srcWs.Cells[6, 3] as Range)?.Value2?.ToString() ?? ""; // E3 -> C1 Timing
+
+                                int lastUsedColumn = srcWs.UsedRange.Columns.Count; // Get the last used column in the source worksheet
+                                for (int col = 3; col <= lastUsedColumn; col++)
+                                {
+                                    reportWs.Cells[reportRow, col + 1] = (srcWs.Cells[r, col] as Range)?.Value2?.ToString() ?? ""; // Adjust column index for the report worksheet
+                                }
+                                reportRow++;
+                            }
+                        }
+
+                        int otherStartRow = ConfigManager.OtherStaff_Start_Row;
+                        int otherEndRow = ConfigManager.OtherStaff_End_Row;
+                        for (int r = otherStartRow; r <= otherEndRow; r++)
+                        {
+                            var bVal = (srcWs.Cells[r, 2] as Range)?.Value2?.ToString();
+
+                            if (!string.IsNullOrWhiteSpace(bVal))
+                            {
+                                // Repeat the header mappings for each copied row
+                                reportWs.Cells[reportRow, 1] = (srcWs.Cells[3, 3] as Range)?.Value2?.ToString() ?? ""; // C3 -> A1 Subject Code
+                                reportWs.Cells[reportRow, 2] = (srcWs.Cells[3, 4] as Range)?.Value2?.ToString() ?? ""; // C5 -> B1 Subject Name
+                                reportWs.Cells[reportRow, 3] = (srcWs.Cells[6, 3] as Range)?.Value2?.ToString() ?? ""; // E3 -> C1 Timing
+
+                                int lastUsedColumn = srcWs.UsedRange.Columns.Count; // Get the last used column in the source worksheet
+                                for (int col = 3; col <= lastUsedColumn; col++)
+                                {
+                                    reportWs.Cells[reportRow, col + 1] = (srcWs.Cells[r, col] as Range)?.Value2?.ToString() ?? ""; 
+                                }
+                                reportRow++;
+                            }
+                        }
+
+                        srcWb.Close(false);
+                        System.Runtime.InteropServices.Marshal.ReleaseComObject(srcWs);
+                        System.Runtime.InteropServices.Marshal.ReleaseComObject(srcWb);
+
+                        // Move file to Done folder
+                        var destFile = Path.Combine(doneFolder, Path.GetFileName(file));
+                        File.Move(file, destFile);
+                        // Update the label and listbox for each successfully processed file
+                        Invoke(new System.Action(() =>
+                        {
+                            lblReport.Visible = true;
+                            lblReport.Text = $"Unified {lstReport.Items.Count + 1} out of {filesCount} files successfully...";
+                            lstReport.Visible = true;
+                            lstReport.Items.Add($"Collected data from file {lstReport.Items.Count + 1}: {Path.GetFileName(file)}");
+                        }));
+                    }
+                });
+
                 reportWb.SaveAs(reportPath);
-                MessageBox.Show($"Report generated: {reportPath}", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                Invoke(new System.Action(() =>
+                {
+                    lblActionDisplay.Text = "Unification process completed successfully.";
+                }));
             }
             catch (Exception ex)
             {
@@ -378,6 +440,16 @@ namespace XcelUnify
                 System.Runtime.InteropServices.Marshal.ReleaseComObject(excelApp);
                 GC.Collect();
                 GC.WaitForPendingFinalizers();
+
+                Invoke(new System.Action(() =>
+                {
+                    Cursor = Cursors.Default;
+                    progressBar.Style = ProgressBarStyle.Blocks;
+                    progressBar.Visible = false;
+                    btnViewOutput.Visible = true;
+                    btnViewOutput.Text = "View Report Folder";
+
+                }));
             }
         }
 
@@ -481,8 +553,19 @@ namespace XcelUnify
 
         private void btnViewOutput_Click(object sender, EventArgs e)
         {
-            //Open the output folder in File Explorer
-            Process.Start("explorer.exe", ConfigManager.Output_Location);
+            string folderPath = btnViewOutput.Text.Contains("Output")
+                    ? ConfigManager.Output_Location
+                    : rptFolderPath;
+
+            if (!string.IsNullOrEmpty(folderPath) && Directory.Exists(folderPath))
+            {
+                Process.Start("explorer.exe", folderPath);
+            }
+            else
+            {
+                MessageBox.Show("The specified folder does not exist.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+
         }
 
         private void btnClose_Click(object sender, EventArgs e)

@@ -16,6 +16,11 @@ namespace XcelUnify.Helpers
         public static string Coursework_Text { get; private set; } = "N";
         public static int Max_Rows { get; private set; } = 0;
         public static int Batch_Size { get; private set; } = 10;
+        public static int SafesStaff_Start_Row { get; private set; } = 22;
+        public static int SafesStaff_End_Row { get; private set; } = 30;
+
+        public static int OtherStaff_Start_Row { get; private set; } = 22;
+        public static int OtherStaff_End_Row { get; private set; } = 30;
 
 
         public static void Init()
@@ -40,6 +45,10 @@ namespace XcelUnify.Helpers
                     config.TryGetValue("CourseworkText", out var courseworkText);
                     config.TryGetValue("MaxRowsToGenerate", out var maxRows);
                     config.TryGetValue("BatchSizeToGenerate", out var batchSize);
+                    config.TryGetValue("SafesStaffStartRow", out var safesStaffStartRow);
+                    config.TryGetValue("SafesStaffEndRow", out var safesStaffEndRow);
+                    config.TryGetValue("OtherStaffStartRow", out var otherStaffStartRow);
+                    config.TryGetValue("OtherStaffEndRow", out var otherStaffEndRow);
 
                     Master_File = !string.IsNullOrEmpty(masterFile)
                         ? Path.Combine(AppContext.BaseDirectory, masterFile)
@@ -74,6 +83,18 @@ namespace XcelUnify.Helpers
                         System.Convert.ToInt32(maxRows) : 0;
                     Batch_Size = !string.IsNullOrEmpty(batchSize) ?
                         System.Convert.ToInt32(batchSize) : 10;
+
+                    SafesStaff_Start_Row = !string.IsNullOrEmpty(safesStaffStartRow) ?
+                        System.Convert.ToInt32(safesStaffStartRow) : 22;
+
+                    SafesStaff_End_Row = !string.IsNullOrEmpty(safesStaffEndRow) ?
+                        System.Convert.ToInt32(safesStaffEndRow) : 30;
+
+                    OtherStaff_Start_Row = !string.IsNullOrEmpty(otherStaffStartRow) ?
+                        System.Convert.ToInt32(otherStaffStartRow) : 35;
+
+                    OtherStaff_End_Row = !string.IsNullOrEmpty(otherStaffEndRow) ?
+                        System.Convert.ToInt32(otherStaffEndRow) : 37;
                 }
                 else
                 {
@@ -84,6 +105,10 @@ namespace XcelUnify.Helpers
                     Done_Folder_Format = "yyyyMMddHHmm_Done";
                     Report_File_Format = "yyyyMMddHHmm_UnifyRpt.xlsx";
                     Coursework_Text = string.Empty;
+                    SafesStaff_Start_Row = 22;
+                    SafesStaff_End_Row = 30;
+                    OtherStaff_Start_Row = 35;
+                    OtherStaff_End_Row = 37;
                 }
             }
             catch
@@ -95,6 +120,10 @@ namespace XcelUnify.Helpers
                 Done_Folder_Format = "yyyyMMddHHmm_Done";
                 Report_File_Format = "yyyyMMddHHmm_UnifyRpt.xlsx";
                 Coursework_Text = string.Empty;
+                SafesStaff_Start_Row = 22;
+                SafesStaff_End_Row = 30;
+                OtherStaff_Start_Row = 35;
+                OtherStaff_End_Row = 37;
             }
         }
 
