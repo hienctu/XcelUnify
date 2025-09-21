@@ -1,4 +1,5 @@
-﻿using System.Text.Json;
+﻿using System.Diagnostics;
+using System.Text.Json;
 
 
 namespace XcelUnify.Helpers
@@ -12,6 +13,11 @@ namespace XcelUnify.Helpers
         public static string Done_Folder_Format { get; private set; } = "yyyyMMddHHmm_Done";
         public static string Report_File_Format { get; private set; } = "yyyyMMddHHmm_UnifyRpt.xlsx";
         public static int Workload_Main_Sheet { get; private set; } = 2;
+        public static string Coursework_Text { get; private set; } = "N";
+        public static int Max_Rows { get; private set; } = 0;
+        public static int Batch_Size { get; private set; } = 10;
+
+
         public static void Init()
         {
             try
@@ -31,6 +37,9 @@ namespace XcelUnify.Helpers
                     config.TryGetValue("DoneFolderFormat", out var doneFolderFormat);
                     config.TryGetValue("ReportFileFormat", out var reportFileFormat);
                     config.TryGetValue("WorkloadMainSheet", out var workloadMainSheet);
+                    config.TryGetValue("CourseworkText", out var courseworkText);
+                    config.TryGetValue("MaxRowsToGenerate", out var maxRows);
+                    config.TryGetValue("BatchSizeToGenerate", out var batchSize);
 
                     Master_File = !string.IsNullOrEmpty(masterFile)
                         ? Path.Combine(AppContext.BaseDirectory, masterFile)
@@ -58,6 +67,13 @@ namespace XcelUnify.Helpers
 
                     Workload_Main_Sheet = !string.IsNullOrEmpty(workloadMainSheet) ?
                         System.Convert.ToInt32(workloadMainSheet) : 2;
+
+                    Coursework_Text = !string.IsNullOrEmpty(courseworkText) ? courseworkText : string.Empty;
+
+                    Max_Rows = !string.IsNullOrEmpty(maxRows) ?
+                        System.Convert.ToInt32(maxRows) : 0;
+                    Batch_Size = !string.IsNullOrEmpty(batchSize) ?
+                        System.Convert.ToInt32(batchSize) : 10;
                 }
                 else
                 {
@@ -67,6 +83,7 @@ namespace XcelUnify.Helpers
                     Unify_Folder = string.Empty;
                     Done_Folder_Format = "yyyyMMddHHmm_Done";
                     Report_File_Format = "yyyyMMddHHmm_UnifyRpt.xlsx";
+                    Coursework_Text = string.Empty;
                 }
             }
             catch
@@ -77,6 +94,7 @@ namespace XcelUnify.Helpers
                 Unify_Folder = string.Empty;
                 Done_Folder_Format = "yyyyMMddHHmm_Done";
                 Report_File_Format = "yyyyMMddHHmm_UnifyRpt.xlsx";
+                Coursework_Text = string.Empty;
             }
         }
 
