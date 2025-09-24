@@ -251,6 +251,7 @@ namespace XcelUnify
                     col++;
                 }
 
+                dataSheet.Visible = XlSheetVisibility.xlSheetVeryHidden;
                 // Save changes
                 workbook.Save();
 
@@ -373,7 +374,8 @@ namespace XcelUnify
                                 reportWs.Cells[reportRow, 3] = (srcWs.Cells[6, 3] as Range)?.Value2?.ToString() ?? ""; // E3 -> C1 Timing
 
                                 int lastUsedColumn = srcWs.UsedRange.Columns.Count; // Get the last used column in the source worksheet
-                                for (int col = 3; col <= lastUsedColumn; col++)
+                                reportWs.Cells[reportRow, 4] = (srcWs.Cells[r, 2] as Range)?.Value2?.ToString() ?? ""; // Staff name
+                                for (int col = 4; col <= lastUsedColumn; col++)
                                 {
                                     reportWs.Cells[reportRow, col + 1] = (srcWs.Cells[r, col] as Range)?.Value2?.ToString() ?? ""; // Adjust column index for the report worksheet
                                 }
@@ -389,17 +391,30 @@ namespace XcelUnify
 
                             if (!string.IsNullOrWhiteSpace(bVal))
                             {
-                                // Repeat the header mappings for each copied row
-                                reportWs.Cells[reportRow, 1] = (srcWs.Cells[3, 3] as Range)?.Value2?.ToString() ?? ""; // C3 -> A1 Subject Code
-                                reportWs.Cells[reportRow, 2] = (srcWs.Cells[3, 4] as Range)?.Value2?.ToString() ?? ""; // C5 -> B1 Subject Name
-                                reportWs.Cells[reportRow, 3] = (srcWs.Cells[6, 3] as Range)?.Value2?.ToString() ?? ""; // E3 -> C1 Timing
-
                                 int lastUsedColumn = srcWs.UsedRange.Columns.Count; // Get the last used column in the source worksheet
-                                for (int col = 3; col <= lastUsedColumn; col++)
+                                bool hasValue = false;
+                                for (int col = 5; col <= lastUsedColumn; col++)
                                 {
-                                    reportWs.Cells[reportRow, col + 1] = (srcWs.Cells[r, col] as Range)?.Value2?.ToString() ?? ""; 
+                                    var cellValue = (srcWs.Cells[r, col] as Range)?.Value2?.ToString();
+                                    if (!string.IsNullOrWhiteSpace(cellValue))
+                                    {
+                                        hasValue = true;
+                                        break;
+                                    }
                                 }
-                                reportRow++;
+                                if (hasValue)
+                                {
+                                    // Repeat the header mappings for each copied row
+                                    reportWs.Cells[reportRow, 1] = (srcWs.Cells[3, 3] as Range)?.Value2?.ToString() ?? ""; // C3 -> A1 Subject Code
+                                    reportWs.Cells[reportRow, 2] = (srcWs.Cells[3, 4] as Range)?.Value2?.ToString() ?? ""; // C5 -> B1 Subject Name
+                                    reportWs.Cells[reportRow, 3] = (srcWs.Cells[6, 3] as Range)?.Value2?.ToString() ?? ""; // E3 -> C1 Timing
+                                    reportWs.Cells[reportRow, 4] = (srcWs.Cells[r, 2] as Range)?.Value2?.ToString() ?? ""; // Staff name
+                                    for (int col = 4; col <= lastUsedColumn; col++)
+                                    {
+                                        reportWs.Cells[reportRow, col + 1] = (srcWs.Cells[r, col] as Range)?.Value2?.ToString() ?? "";
+                                    }
+                                    reportRow++;
+                                }
                             }
                         }
 
