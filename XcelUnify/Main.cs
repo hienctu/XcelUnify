@@ -3,6 +3,7 @@ using XcelUnify.Helpers;
 using Range = Microsoft.Office.Interop.Excel.Range;
 using Application = Microsoft.Office.Interop.Excel.Application;
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 
 namespace XcelUnify
 {
@@ -13,9 +14,15 @@ namespace XcelUnify
         {
             InitializeComponent();
             txtMasterFile.Text = ConfigManager.Master_File;
+
+            txtTemplateFile.Text = ConfigManager.GetTemplateFile(ConfigManager.Coursework_Text);
             txtTemplateFile.ReadOnly = true;
-            txtTemplateFile.Text = ConfigManager.Template_File;
-            txtTemplateFile.ReadOnly = true;
+
+            txtResearchTemplateFile.Text = ConfigManager.GetTemplateFile(ConfigManager.Research_Text);
+            txtResearchTemplateFile.ReadOnly = true;
+
+            txtDualCampusTemplateFile.Text = ConfigManager.GetTemplateFile(ConfigManager.DualCampus_Text);
+            txtDualCampusTemplateFile.ReadOnly = true;
 
             lblActionDisplay.Visible = false;
             progressBar.Visible = false;
@@ -41,21 +48,26 @@ namespace XcelUnify
             // Change the cursor to "Wait"
             lstReport.Items.Clear();
             Cursor = Cursors.WaitCursor;
+            int fromRow = ConfigManager.Generate_From_Row;
+            int toRow = ConfigManager.Generate_To_Row;
+            int maxRows = toRow - fromRow + 1;
 
             Invoke(new System.Action(() =>
             {
                 lblActionDisplay.Visible = true;
-                lblActionDisplay.Text = "Generating SAFES workload files...";
+                lblActionDisplay.Text = String.Format("Generating workload files...(from row {0} to row {1} in master data file)", fromRow, toRow) ;
                 progressBar.Visible = true;
                 progressBar.Style = ProgressBarStyle.Marquee;
             }));
 
-            int maxRows = ConfigManager.Max_Rows;
+            
+
             int rowCount = 0;
             int colCount = 0;
 
             var masterFilePath = ConfigManager.Master_File;
-            var templateFilePath = ConfigManager.Template_File;
+            var templateFilePath = string.Empty;
+            var masterHeaderRow = ConfigManager.Master_First_Data_Row - 1;
 
             Application excelApp = null;
             Workbook masterFile = null;
@@ -68,10 +80,10 @@ namespace XcelUnify
                 masterFile = excelApp.Workbooks.Open(masterFilePath);
                 worksheet = (Worksheet?)masterFile.Worksheets[1];
                 usedRange = worksheet.UsedRange;
-                rowCount = usedRange.Rows.Count;
+                rowCount = usedRange.Rows.Count - masterHeaderRow;
                 colCount = usedRange.Columns.Count;
 
-                if (rowCount < 2)
+                if (rowCount < ConfigManager.Master_First_Data_Row)
                 {
                     MessageBox.Show("Excel file does not contain enough rows.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     return;
@@ -81,12 +93,9 @@ namespace XcelUnify
                 var headers = new List<string>();
                 for (int col = 1; col <= colCount; col++)
                 {
-                    var headerValue = (usedRange.Cells[1, col] as Range)?.Value2?.ToString() ?? string.Empty;
+                    var headerValue = (usedRange.Cells[masterHeaderRow, col] as Range)?.Value2?.ToString() ?? string.Empty;
                     headers.Add(headerValue);
                 }
-
-                if (maxRows == 0) maxRows = rowCount - 1; // Process all rows if Max_Rows is 0
-                else if (maxRows > rowCount - 1) maxRows = rowCount - 1; // Limit to available rows
 
                 // Data rows - skip header row
                 int batchSize = ConfigManager.Batch_Size;
@@ -95,7 +104,7 @@ namespace XcelUnify
                 // Process rows asynchronously
                 await Task.Run(async () =>
                 {
-                    for (int row = 2; row <= rowCount; row++)
+                    for (int row = fromRow; row <= toRow; row++)
                     {
                         var rowData = new Dictionary<string, string>();
                         for (int col = 1; col <= colCount; col++)
@@ -108,19 +117,16 @@ namespace XcelUnify
 
                         if (batch.Count == batchSize)
                         {
-                            await ProcessBatchAsync(batch, excelApp);
+                            await ProcessBatchAsync(batch, excelApp, maxRows);
                             batch.Clear();
                             GC.Collect();
                         }
-
-                        if ((row - 1) >= maxRows)
-                            break;
                     }
 
                     // Process any remaining rows
                     if (batch.Count > 0)
                     {
-                        await ProcessBatchAsync(batch, excelApp);
+                        await ProcessBatchAsync(batch, excelApp, maxRows);
                         batch.Clear();
                         GC.Collect();
                     }
@@ -164,15 +170,15 @@ namespace XcelUnify
             }
         }
 
-        private async Task ProcessBatchAsync(List<Dictionary<string, string>> batch, Application excelApp)
+        private async Task ProcessBatchAsync(List<Dictionary<string, string>> batch, Application excelApp, int numberRowsToGenerate)
         {
             foreach (var row in batch)
             {
-                await ProcessRow(row, excelApp);
+                await ProcessRow(row, excelApp, numberRowsToGenerate);
             }
         }
 
-        private async Task ProcessRow(Dictionary<string, string> row, Application excelApp)
+        private async Task ProcessRow(Dictionary<string, string> row, Application excelApp, int numberRowsToGenerate)
         {
             if (!row.TryGetValue(ColumnNames.SubjectCode, out var subjectCode) ||
                 !row.TryGetValue(ColumnNames.StudyPeriod, out var studyPeriod))
@@ -181,22 +187,22 @@ namespace XcelUnify
                 return;
             }
 
-            var sType = row.TryGetValue(ColumnNames.SubjectType, out var subjectType) ? subjectType : string.Empty;
-            if (sType.ToLower().Trim() != ConfigManager.Coursework_Text.ToLower().Trim())
+            var sType = row.TryGetValue(ColumnNames.Category, out var category) ? category : string.Empty;
+            var templateFile = ConfigManager.GetTemplateFile(sType);
+            if (string.IsNullOrEmpty(templateFile))
             {
-                return; // Skip non-coursework subjects
+                return; // Skip - cannot find template file
             }
 
             Workbook workbook = null;
             Worksheet dataSheet = null;
 
+            var safeSubjectCode = string.Concat(subjectCode.Split(Path.GetInvalidFileNameChars())).ToLowerInvariant();
+            var safeStudyPeriod = string.Concat(studyPeriod.Split(Path.GetInvalidFileNameChars())).ToLowerInvariant();
+            var fileName = $"{safeSubjectCode}_{safeStudyPeriod}.xlsx";
+
             try
             {
-                // Build safe filename
-                var safeSubjectCode = string.Concat(subjectCode.Split(Path.GetInvalidFileNameChars())).ToLowerInvariant();
-                var safeStudyPeriod = string.Concat(studyPeriod.Split(Path.GetInvalidFileNameChars())).ToLowerInvariant();
-                var fileName = $"{safeSubjectCode}_{safeStudyPeriod}.xlsx";
-
                 var outputDir = ConfigManager.Output_Location;
                 Directory.CreateDirectory(outputDir);
                 var targetPath = Path.Combine(outputDir, fileName);
@@ -210,11 +216,14 @@ namespace XcelUnify
                 else
                 {
                     // Copy template to writable location
-                    File.Copy(ConfigManager.Template_File, targetPath, overwrite: true);
+                    File.Copy(templateFile, targetPath, overwrite: true);
 
                     // Open the copied template file
                     workbook = excelApp.Workbooks.Open(targetPath);
                 }
+
+                //Start unlock the file
+                workbook.Unprotect(ConfigManager.Template_File_Password);
 
                 // Try to get "Data" sheet, or create if missing
                 dataSheet = null;
@@ -252,28 +261,39 @@ namespace XcelUnify
                 }
 
                 dataSheet.Visible = XlSheetVisibility.xlSheetVeryHidden;
+
+                //Protect the workbook again
+                workbook.Protect(ConfigManager.Template_File_Password);
+
                 // Save changes
                 workbook.Save();
 
-                // Extract total rows from lblMasterFileRowCount
-                var totalRowsText = lblMasterFileRowCount.Text.Replace("Rows in Master File: ", "").Trim();
-                if (!int.TryParse(totalRowsText, out var totalRows))
-                {
-                    totalRows = 0; // Fallback if parsing fails
-                }
+                var totalRows = numberRowsToGenerate > 0 ? numberRowsToGenerate : 1;
 
                 // Update the label and listbox for each successfully processed file
                 Invoke(new System.Action(() =>
                 {
                     lblReport.Visible = true;
-                    lblReport.Text = $"Generated {lstReport.Items.Count + 1} out of {totalRows - 1} files successfully...";
+                    lblReport.Text = $"Generated {lstReport.Items.Count + 1} out of {totalRows} files successfully...";
                     lstReport.Visible = true;
                     lstReport.Items.Add($"File {lstReport.Items.Count + 1}: {fileName}");
                 }));
             }
+            catch (COMException comEx) when (comEx.Message.Contains("password"))
+            {
+                // Specific error for incorrect password
+                Invoke(new System.Action(() =>
+                {
+                    lstReport.Items.Add($"File {fileName} could not be unlocked with the provided password. Skipping...");
+                }));
+            }
             catch (Exception ex)
             {
-                MessageBox.Show($"Failed to create/update file: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                // Generic error handling
+                Invoke(new System.Action(() =>
+                {
+                    lstReport.Items.Add($"Error - File {fileName} encountered an error. Skipping...");
+                }));
             }
             finally
             {
@@ -301,6 +321,7 @@ namespace XcelUnify
                 lblActionDisplay.Text = "Unifying SAFES workload files...";
                 progressBar.Visible = true;
                 progressBar.Style = ProgressBarStyle.Marquee;
+                lstReport.Visible = true;
             }));
 
             var unifyFolder = ConfigManager.Unify_Folder;
@@ -334,8 +355,8 @@ namespace XcelUnify
                 // Add headers to the report
                 string[] headers = new string[]
                 {
-                    "Subject Code", "Subject Title", "Study Period", "Coordinator",
-                    "Lecture Initial", "Lecture Repeat", "Tute/WS Initial", "Tute/WS Repeat",
+                    "Subject Code", "Subject Title", "Study Period", "Est. Enrolment", "% Allocation", 
+                    "Staff Name", "Coordinator", "Lecture Initial", "Lecture Repeat", "Tute/WS Initial", "Tute/WS Repeat",
                     "Practical Initial", "Practical Repeat", "FieldTrip/Excursion", "Marking"
                 };
 
@@ -353,89 +374,186 @@ namespace XcelUnify
                 await Task.Run(async () =>
                 {
                     var filesCount = Directory.GetFiles(unifyFolder, "*.xlsx", SearchOption.TopDirectoryOnly).Count();
+
                     foreach (var file in Directory.GetFiles(unifyFolder, "*.xlsx", SearchOption.TopDirectoryOnly))
                     {
-                        Workbook srcWb = excelApp.Workbooks.Open(file);
-                        Worksheet srcWs = (Worksheet)srcWb.Worksheets[ConfigManager.Workload_Main_Sheet];
-                        // Find START and END in column A
-                        int startRow = ConfigManager.SafesStaff_Start_Row,
-                            endRow = ConfigManager.SafesStaff_End_Row;
-
-                        // For loop row from START to END (column A)
-                        for (int r = startRow; r <= endRow; r++)
+                        try
                         {
-                            var bVal = (srcWs.Cells[r, 2] as Range)?.Value2?.ToString();
+                            Workbook srcWb = excelApp.Workbooks.Open(file);
+                            Worksheet srcWs = (Worksheet)srcWb.Worksheets[ConfigManager.Workload_Main_Sheet];
+                            // Find START and END in column A
+                            int startRow = 0,
+                                endRow = 0;
 
-                            if (!string.IsNullOrWhiteSpace(bVal))
+                            int otherStaffStartRow = 0;
+                            int otherStaffEndRow = 0;
+
+                            decimal allocatedPercent = 0;
+
+                            var allocatedValue = (srcWs.Range[ConfigManager.Allocated_Overall_Address] as Range)?.Value2?.ToString();
+                            decimal resultAllocation;
+                            allocatedPercent = decimal.TryParse(allocatedValue, out resultAllocation) ? Math.Round(resultAllocation, 1) : 0;
+                            // Assuming labels are in column A
+                            for (int row = 1; row <= srcWs.UsedRange.Rows.Count; row++)
                             {
-                                // Repeat the header mappings for each copied row
-                                reportWs.Cells[reportRow, 1] = (srcWs.Cells[3, 3] as Range)?.Value2?.ToString() ?? ""; // C3 -> A1 Subject Code
-                                reportWs.Cells[reportRow, 2] = (srcWs.Cells[3, 4] as Range)?.Value2?.ToString() ?? ""; // C5 -> B1 Subject Name
-                                reportWs.Cells[reportRow, 3] = (srcWs.Cells[6, 3] as Range)?.Value2?.ToString() ?? ""; // E3 -> C1 Timing
+                                var cellValue = (srcWs.Cells[row, 2] as Range)?.Value2?.ToString();
 
-                                int lastUsedColumn = srcWs.UsedRange.Columns.Count; // Get the last used column in the source worksheet
-                                reportWs.Cells[reportRow, 4] = (srcWs.Cells[r, 2] as Range)?.Value2?.ToString() ?? ""; // Staff name
-                                for (int col = 4; col <= lastUsedColumn; col++)
+                                if (cellValue != null)
                                 {
-                                    reportWs.Cells[reportRow, col + 1] = (srcWs.Cells[r, col] as Range)?.Value2?.ToString() ?? ""; // Adjust column index for the report worksheet
-                                }
-                                reportRow++;
-                            }
-                        }
-
-                        int otherStartRow = ConfigManager.OtherStaff_Start_Row;
-                        int otherEndRow = ConfigManager.OtherStaff_End_Row;
-                        for (int r = otherStartRow; r <= otherEndRow; r++)
-                        {
-                            var bVal = (srcWs.Cells[r, 2] as Range)?.Value2?.ToString();
-
-                            if (!string.IsNullOrWhiteSpace(bVal))
-                            {
-                                int lastUsedColumn = srcWs.UsedRange.Columns.Count; // Get the last used column in the source worksheet
-                                bool hasValue = false;
-                                for (int col = 5; col <= lastUsedColumn; col++)
-                                {
-                                    var cellValue = (srcWs.Cells[r, col] as Range)?.Value2?.ToString();
-                                    if (!string.IsNullOrWhiteSpace(cellValue))
+                                    if (cellValue.Contains(ConfigManager.SafesStaff_Label, StringComparison.OrdinalIgnoreCase))
                                     {
-                                        hasValue = true;
+                                        startRow = row + 2; // Start row is the row after the label
+                                    }
+                                    else if (cellValue.Contains(ConfigManager.TotalHrs_Label, StringComparison.OrdinalIgnoreCase)
+                                                && startRow > 0 && row > startRow)
+                                    {
+                                        endRow = row - 1; // End row is the row before this label
                                         break;
                                     }
                                 }
-                                if (hasValue)
+                            }
+                            for (int row = endRow + 1; row <= srcWs.UsedRange.Rows.Count; row++)
+                            {
+                                var cellValue = (srcWs.Cells[row, 2] as Range)?.Value2?.ToString();
+
+                                if (cellValue != null)
+                                {
+                                    if (cellValue.Contains(ConfigManager.OtherStaff_Label, StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        otherStaffStartRow = row + 2; // Start row is the row after the label
+                                    }
+                                    else if (cellValue.Contains(ConfigManager.TotalHrs_Label, StringComparison.OrdinalIgnoreCase) 
+                                                && otherStaffStartRow > 0 
+                                                && otherStaffStartRow > startRow 
+                                                && row > otherStaffStartRow)
+                                    {
+                                        otherStaffEndRow = row - 1; // End row is the row before this label
+                                        break; // Exit loop once both labels are found
+                                    }
+                                }
+                            }
+
+                            if (startRow == 0 || endRow == 0)
+                            {
+                                throw new Exception("Could not find SafesStaffLabel or TotalHrsLabel in the worksheet.");
+                            }
+
+
+                            // For loop row from START to END (column A)
+                            for (int r = startRow; r <= endRow; r++)
+                            {
+                                var bVal = (srcWs.Cells[r, 2] as Range)?.Value2?.ToString();
+
+                                if (!string.IsNullOrWhiteSpace(bVal))
                                 {
                                     // Repeat the header mappings for each copied row
-                                    reportWs.Cells[reportRow, 1] = (srcWs.Cells[3, 3] as Range)?.Value2?.ToString() ?? ""; // C3 -> A1 Subject Code
-                                    reportWs.Cells[reportRow, 2] = (srcWs.Cells[3, 4] as Range)?.Value2?.ToString() ?? ""; // C5 -> B1 Subject Name
-                                    reportWs.Cells[reportRow, 3] = (srcWs.Cells[6, 3] as Range)?.Value2?.ToString() ?? ""; // E3 -> C1 Timing
-                                    reportWs.Cells[reportRow, 4] = (srcWs.Cells[r, 2] as Range)?.Value2?.ToString() ?? ""; // Staff name
-                                    for (int col = 4; col <= lastUsedColumn; col++)
+                                    reportWs.Cells[reportRow, 1] = (srcWs.Cells[3, 3] as Range)?.Value2?.ToString() ?? ""; // C3 - Code
+                                    reportWs.Cells[reportRow, 2] = (srcWs.Cells[3, 4] as Range)?.Value2?.ToString() ?? ""; // C5 - Name
+                                    reportWs.Cells[reportRow, 3] = (srcWs.Cells[7, 3] as Range)?.Value2?.ToString() ?? ""; // C7 - Timing
+                                    reportWs.Cells[reportRow, 4] = (srcWs.Cells[8, 3] as Range)?.Value2?.ToString() ?? ""; // C8 - Enrolment
+                                    reportWs.Cells[reportRow, 5] = allocatedPercent; // % Allocation
+
+                                    if (allocatedPercent < 100)
                                     {
-                                        reportWs.Cells[reportRow, col + 1] = (srcWs.Cells[r, col] as Range)?.Value2?.ToString() ?? "";
+                                        for (int col = 1; col <= 5; col++)
+                                        {
+                                            var cell = reportWs.Cells[reportRow, col] as Range;
+                                            if (cell != null)
+                                            {
+                                                cell.Interior.Color = ColorTranslator.ToOle(System.Drawing.Color.LightYellow);
+                                            }
+                                        }
+                                    }
+
+                                    int lastUsedColumn = srcWs.UsedRange.Columns.Count; // Get the last used column in the source worksheet
+                                    reportWs.Cells[reportRow, 6] = (srcWs.Cells[r, 2] as Range)?.Value2?.ToString() ?? ""; // Staff name
+
+                                    for (int workloadFileCol = 3; workloadFileCol <= lastUsedColumn; workloadFileCol++)
+                                    {
+                                        reportWs.Cells[reportRow, workloadFileCol + 4] = (srcWs.Cells[r, workloadFileCol] as Range)?.Value2?.ToString() ?? ""; // Adjust column index for the report worksheet
                                     }
                                     reportRow++;
                                 }
                             }
+
+                            for (int r = otherStaffStartRow; r <= otherStaffEndRow; r++)
+                            {
+                                var bVal = (srcWs.Cells[r, 2] as Range)?.Value2?.ToString();
+
+                                if (!string.IsNullOrWhiteSpace(bVal))
+                                {
+                                    int lastUsedColumn = srcWs.UsedRange.Columns.Count; // Get the last used column in the source worksheet
+                                    bool hasValue = false;
+                                    for (int workloadFileCol = 3; workloadFileCol <= lastUsedColumn; workloadFileCol++)
+                                    {
+                                        var cellValue = (srcWs.Cells[r, workloadFileCol] as Range)?.Value2?.ToString();
+                                        if (!string.IsNullOrWhiteSpace(cellValue))
+                                        {
+                                            hasValue = true;
+                                            break;
+                                        }
+                                    }
+                                    if (hasValue)
+                                    {
+                                        // Repeat the header mappings for each copied row
+                                        reportWs.Cells[reportRow, 1] = (srcWs.Cells[3, 3] as Range)?.Value2?.ToString() ?? ""; // C3 - Code
+                                        reportWs.Cells[reportRow, 2] = (srcWs.Cells[3, 4] as Range)?.Value2?.ToString() ?? ""; // C5 - Name
+                                        reportWs.Cells[reportRow, 3] = (srcWs.Cells[7, 3] as Range)?.Value2?.ToString() ?? ""; // C7 - Timing
+                                        reportWs.Cells[reportRow, 4] = (srcWs.Cells[8, 3] as Range)?.Value2?.ToString() ?? ""; // C8 - Enrolment
+                                        reportWs.Cells[reportRow, 5] = allocatedPercent; // % Allocation
+
+                                        if (allocatedPercent < 100)
+                                        {
+                                            for (int col = 1; col <= 5; col++)
+                                            {
+                                                var cell = reportWs.Cells[reportRow, col] as Range;
+                                                if (cell != null)
+                                                {
+                                                    cell.Interior.Color = ColorTranslator.ToOle(System.Drawing.Color.LightYellow);
+                                                }
+                                            }
+                                        }
+
+                                        reportWs.Cells[reportRow, 6] = (srcWs.Cells[r, 2] as Range)?.Value2?.ToString() ?? ""; // Staff name
+
+                                        for (int workloadFileCol = 3; workloadFileCol <= lastUsedColumn; workloadFileCol++)
+                                        {
+                                            reportWs.Cells[reportRow, workloadFileCol + 4] = (srcWs.Cells[r, workloadFileCol] as Range)?.Value2?.ToString() ?? "";
+                                        }
+                                        reportRow++;
+                                    }
+                                }
+                            }
+
+                            srcWb.Close(false);
+                            Marshal.ReleaseComObject(srcWs);
+                            System.Runtime.InteropServices.Marshal.ReleaseComObject(srcWb);
+
+                            // Move file to Done folder
+                            var destFile = Path.Combine(doneFolder, Path.GetFileName(file));
+                            File.Move(file, destFile);
+                            // Update the label and listbox for each successfully processed file
+                            Invoke(new System.Action(() =>
+                            {
+                                lblReport.Visible = true;
+                                lblReport.Text = $"Unified {lstReport.Items.Count + 1} out of {filesCount} files successfully...";
+                                lstReport.Visible = true;
+                                lstReport.Items.Add($"Collected data from file {lstReport.Items.Count + 1}: {Path.GetFileName(file)}");
+                            }));
                         }
-
-                        srcWb.Close(false);
-                        System.Runtime.InteropServices.Marshal.ReleaseComObject(srcWs);
-                        System.Runtime.InteropServices.Marshal.ReleaseComObject(srcWb);
-
-                        // Move file to Done folder
-                        var destFile = Path.Combine(doneFolder, Path.GetFileName(file));
-                        File.Move(file, destFile);
-                        // Update the label and listbox for each successfully processed file
-                        Invoke(new System.Action(() =>
+                        catch (Exception ex)
                         {
-                            lblReport.Visible = true;
-                            lblReport.Text = $"Unified {lstReport.Items.Count + 1} out of {filesCount} files successfully...";
-                            lstReport.Visible = true;
-                            lstReport.Items.Add($"Collected data from file {lstReport.Items.Count + 1}: {Path.GetFileName(file)}");
-                        }));
+                            // Log error and continue with next file
+                            Invoke(new System.Action(() =>
+                            {
+                                lstReport.Items.Add($"Error - File {Path.GetFileName(file)} encountered an error. Skipping...");
+                            }));
+                        }
                     }
-                });
+                }); //End of Task.Run
 
+
+                reportWs.Columns.AutoFit();
                 reportWb.SaveAs(reportPath);
                 Invoke(new System.Action(() =>
                 {
@@ -490,7 +608,7 @@ namespace XcelUnify
             }
 
             // Check if the template file exists
-            var templateFilePath = ConfigManager.Template_File;
+            var templateFilePath = ConfigManager.GetTemplateFile(ConfigManager.Coursework_Text);
             if (!File.Exists(templateFilePath))
             {
                 MessageBox.Show("Template file not found.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
@@ -515,7 +633,7 @@ namespace XcelUnify
                     worksheet.AutoFilterMode = false;
                 }
 
-                int rowCount = usedRange.Rows.Count - 1;
+                int rowCount = usedRange.Rows.Count - ConfigManager.Master_First_Data_Row + 1;
                 lblMasterFileRowCount.Text = $"Rows in Master File: {rowCount}";
             }
             catch (Exception ex)
@@ -621,6 +739,16 @@ namespace XcelUnify
 
             // Close the form
             this.Close();
+        }
+
+        private void button1_Click(object sender, EventArgs e)
+        {
+            Process.Start("explorer.exe", Path.GetDirectoryName(txtResearchTemplateFile.Text));
+        }
+
+        private void btnViewDualCampusTemplate_Click(object sender, EventArgs e)
+        {
+            Process.Start("explorer.exe", Path.GetDirectoryName(txtDualCampusTemplateFile.Text));
         }
     }
 }

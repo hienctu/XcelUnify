@@ -1,0 +1,24 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.5.2.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "XcelUnify", "XcelUnify.csproj", "{B6856599-5844-8154-79E6-8FF96670875D}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{B6856599-5844-8154-79E6-8FF96670875D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B6856599-5844-8154-79E6-8FF96670875D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B6856599-5844-8154-79E6-8FF96670875D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B6856599-5844-8154-79E6-8FF96670875D}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {F4E8E57E-E78D-403C-AA31-ECD40AA8889C}
+	EndGlobalSection
+EndGlobal

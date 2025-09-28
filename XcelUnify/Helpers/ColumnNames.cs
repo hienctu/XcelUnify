@@ -4,7 +4,7 @@
     {
         public const string SubjectCode = "Subject code";
         public const string StudyPeriod = "Study period";
-        public const string SubjectType = "Subject type";
+        public const string Category = "Category";
         // Add other column names as needed
     }
 }
