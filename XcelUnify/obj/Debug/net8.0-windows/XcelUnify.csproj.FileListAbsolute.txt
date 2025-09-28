@@ -46,7 +46,6 @@ C:\_work\melb\2025\safe\Application\XcelUnify\XcelUnify\obj\Debug\net8.0-windows
 C:\_work\melb\2025\safe\Application\XcelUnify\XcelUnify\bin\Debug\net8.0-windows\Unify\readme.txt
 C:\_work\HD\XcelUnify\XcelUnify\XcelUnify\bin\Debug\net8.0-windows\appsettings.json
 C:\_work\HD\XcelUnify\XcelUnify\XcelUnify\bin\Debug\net8.0-windows\Data\master.xlsx
-C:\_work\HD\XcelUnify\XcelUnify\XcelUnify\bin\Debug\net8.0-windows\Data\template.xlsx
 C:\_work\HD\XcelUnify\XcelUnify\XcelUnify\bin\Debug\net8.0-windows\Output\readme.txt
 C:\_work\HD\XcelUnify\XcelUnify\XcelUnify\bin\Debug\net8.0-windows\Unify\readme.txt
 C:\_work\HD\XcelUnify\XcelUnify\XcelUnify\bin\Debug\net8.0-windows\XcelUnify.exe
@@ -68,3 +67,6 @@ C:\_work\HD\XcelUnify\XcelUnify\XcelUnify\obj\Debug\net8.0-windows\refint\XcelUn
 C:\_work\HD\XcelUnify\XcelUnify\XcelUnify\obj\Debug\net8.0-windows\XcelUnify.pdb
 C:\_work\HD\XcelUnify\XcelUnify\XcelUnify\obj\Debug\net8.0-windows\XcelUnify.genruntimeconfig.cache
 C:\_work\HD\XcelUnify\XcelUnify\XcelUnify\obj\Debug\net8.0-windows\ref\XcelUnify.dll
+C:\_work\HD\XcelUnify\XcelUnify\XcelUnify\bin\Debug\net8.0-windows\Data\dual-template.xlsx
+C:\_work\HD\XcelUnify\XcelUnify\XcelUnify\bin\Debug\net8.0-windows\Data\research-template.xlsx
+C:\_work\HD\XcelUnify\XcelUnify\XcelUnify\bin\Debug\net8.0-windows\Data\standard-template.xlsx
