@@ -400,7 +400,7 @@ namespace XcelUnify
 
                                 if (cellValue != null)
                                 {
-                                    if (cellValue.Contains(ConfigManager.SafesStaff_Label, StringComparison.OrdinalIgnoreCase))
+                                    if (cellValue.Trim().ToLower() == ConfigManager.SafesStaff_Label.Trim().ToLower())
                                     {
                                         startRow = row + 2; // Start row is the row after the label
                                     }
@@ -418,7 +418,7 @@ namespace XcelUnify
 
                                 if (cellValue != null)
                                 {
-                                    if (cellValue.Contains(ConfigManager.OtherStaff_Label, StringComparison.OrdinalIgnoreCase))
+                                    if (cellValue.Trim().ToLower() == ConfigManager.OtherStaff_Label.Trim().ToLower())
                                     {
                                         otherStaffStartRow = row + 2; // Start row is the row after the label
                                     }
