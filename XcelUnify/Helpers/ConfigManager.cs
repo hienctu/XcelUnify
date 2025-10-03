@@ -21,7 +21,7 @@ namespace XcelUnify.Helpers
         
         public static int Master_First_Data_Row { get; private set; } = 4;
         public static int Generate_From_Row { get; private set; } = 4;
-        public static int Generate_To_Row { get; private set; } = 300;
+        public static int Generate_To_Row { get; set; } = 0;
         public static int Batch_Size { get; private set; } = 10;
 
         public static string SafesStaff_Label { get; private set; } = string.Empty;
@@ -104,13 +104,10 @@ namespace XcelUnify.Helpers
                     Generate_From_Row = !string.IsNullOrEmpty(fromRow) ?
                         System.Convert.ToInt32(fromRow) : Master_First_Data_Row;
                     Generate_To_Row = !string.IsNullOrEmpty(toRow) ?
-                        System.Convert.ToInt32(toRow) : 300;
-
-                    if (Generate_To_Row <= Generate_From_Row)
-                        Generate_To_Row = Generate_From_Row + 1;
-
+                        System.Convert.ToInt32(toRow) : 0;
+                   
                     if (Generate_From_Row == 0) Generate_From_Row = Master_First_Data_Row;
-                    if (Generate_To_Row == 0) Generate_To_Row = 300;
+                   
 
                     Batch_Size = !string.IsNullOrEmpty(batchSize) ?
                         System.Convert.ToInt32(batchSize) : 10;
@@ -145,7 +142,7 @@ namespace XcelUnify.Helpers
 
                     Master_First_Data_Row = 4;
                     Generate_From_Row = Master_First_Data_Row;
-                    Generate_To_Row = 300;
+                    Generate_To_Row = 0;
                     Batch_Size = 10;
 
                     SafesStaff_Label = string.Empty;
@@ -172,7 +169,7 @@ namespace XcelUnify.Helpers
 
                 Master_First_Data_Row = 4;
                 Generate_From_Row = Master_First_Data_Row;
-                Generate_To_Row = 300;
+                Generate_To_Row = 0;
                 Batch_Size = 10;
 
                 SafesStaff_Label = string.Empty;
@@ -200,8 +197,9 @@ namespace XcelUnify.Helpers
             return sType.ToLower().Trim().Contains(DualCampus_Text.ToLower().Trim());
         }
 
-        public static string GetTemplateFile(string sType)
+        public static string GetTemplateFile(string sType, string basePath = null)
         {
+            string path = basePath ?? Template_File_Path;
             if (IsCourseWork(sType))
                 return Path.Combine(Template_File_Path, "standard-template.xlsx");
             else if (IsResearchInternship(sType))

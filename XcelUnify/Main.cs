@@ -65,7 +65,37 @@ namespace XcelUnify
             int rowCount = 0;
             int colCount = 0;
 
+            // 1. Create temp working folder
+            string timestamp = DateTime.Now.ToString("yyyyMMddHHmmss");
+            string tempWorkFolder = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Working", $"TempWork_{timestamp}");
+            Directory.CreateDirectory(tempWorkFolder);
+
             var masterFilePath = ConfigManager.Master_File;
+            string tempMasterFile = Path.Combine(tempWorkFolder, Path.GetFileName(masterFilePath));
+            File.Copy(masterFilePath, tempMasterFile, true);
+
+            // Copy all template files to the temp folder
+            string[] templateFiles = { "standard-template.xlsx", "research-template.xlsx", "dual-template.xlsx" };
+            foreach (var templateFile in templateFiles)
+            {
+                string source = Path.Combine(ConfigManager.Template_File_Path, templateFile);
+                string dest = Path.Combine(tempWorkFolder, templateFile);
+                if (File.Exists(source))
+                {
+                    File.Copy(source, dest, true);
+                }
+            }
+
+
+            string outputDir = ConfigManager.Output_Location;
+            string tempOutputDir = Path.Combine(tempWorkFolder, "Output");
+            Directory.CreateDirectory(tempOutputDir);
+            foreach (var file in Directory.GetFiles(outputDir, "*.xlsx", SearchOption.TopDirectoryOnly))
+            {
+                string dest = Path.Combine(tempOutputDir, Path.GetFileName(file));
+                File.Copy(file, dest, true);
+            }
+
             var templateFilePath = string.Empty;
             var masterHeaderRow = ConfigManager.Master_First_Data_Row - 1;
 
@@ -77,7 +107,7 @@ namespace XcelUnify
             try
             {
                 excelApp = new Application();
-                masterFile = excelApp.Workbooks.Open(masterFilePath);
+                masterFile = excelApp.Workbooks.Open(tempMasterFile);
                 worksheet = (Worksheet?)masterFile.Worksheets[1];
                 usedRange = worksheet.UsedRange;
                 rowCount = usedRange.Rows.Count - masterHeaderRow;
@@ -117,7 +147,7 @@ namespace XcelUnify
 
                         if (batch.Count == batchSize)
                         {
-                            await ProcessBatchAsync(batch, excelApp, maxRows);
+                            await ProcessBatchAsync(batch, excelApp, maxRows, tempWorkFolder, tempOutputDir);
                             batch.Clear();
                             GC.Collect();
                         }
@@ -126,11 +156,25 @@ namespace XcelUnify
                     // Process any remaining rows
                     if (batch.Count > 0)
                     {
-                        await ProcessBatchAsync(batch, excelApp, maxRows);
+                        await ProcessBatchAsync(batch, excelApp, maxRows, tempWorkFolder, tempOutputDir);
                         batch.Clear();
                         GC.Collect();
                     }
                 });
+
+                //Move all files from tempOutputDir to outputDir
+                if (Directory.Exists(tempOutputDir))
+                {
+                    foreach (var file in Directory.GetFiles(tempOutputDir, "*.xlsx", SearchOption.TopDirectoryOnly))
+                    {
+                        var destFile = Path.Combine(outputDir, Path.GetFileName(file));
+                        File.Copy(file, destFile, true);
+                    }
+                }
+
+               
+
+
                 Invoke(new System.Action(() =>
                 {
                     lblActionDisplay.Text = "Generation completed.";
@@ -168,17 +212,31 @@ namespace XcelUnify
 
                 }));
             }
-        }
 
-        private async Task ProcessBatchAsync(List<Dictionary<string, string>> batch, Application excelApp, int numberRowsToGenerate)
-        {
-            foreach (var row in batch)
+            //Now delete temp working folder
+            try
             {
-                await ProcessRow(row, excelApp, numberRowsToGenerate);
+                if (Directory.Exists(tempWorkFolder))
+                {
+                    Directory.Delete(tempWorkFolder, true); // true = recursive delete
+                }
+            }
+            catch (Exception ex)
+            {
+                // Optionally log or show a warning, but do not block the user
+                Debug.WriteLine($"Failed to delete temp working folder: {ex.Message}");
             }
         }
 
-        private async Task ProcessRow(Dictionary<string, string> row, Application excelApp, int numberRowsToGenerate)
+        private async Task ProcessBatchAsync(List<Dictionary<string, string>> batch, Application excelApp, int numberRowsToGenerate, string tempWorkFolder, string tempOutputDir)
+        {
+            foreach (var row in batch)
+            {
+                await ProcessRow(row, excelApp, numberRowsToGenerate, tempWorkFolder, tempOutputDir);
+            }
+        }
+
+        private async Task ProcessRow(Dictionary<string, string> row, Application excelApp, int numberRowsToGenerate, string tempWorkFolder, string tempOutputDir)
         {
             if (!row.TryGetValue(ColumnNames.SubjectCode, out var subjectCode) ||
                 !row.TryGetValue(ColumnNames.StudyPeriod, out var studyPeriod))
@@ -188,7 +246,7 @@ namespace XcelUnify
             }
 
             var sType = row.TryGetValue(ColumnNames.Category, out var category) ? category : string.Empty;
-            var templateFile = ConfigManager.GetTemplateFile(sType);
+            var templateFile = ConfigManager.GetTemplateFile(sType, tempWorkFolder);
             if (string.IsNullOrEmpty(templateFile))
             {
                 return; // Skip - cannot find template file
@@ -203,9 +261,7 @@ namespace XcelUnify
 
             try
             {
-                var outputDir = ConfigManager.Output_Location;
-                Directory.CreateDirectory(outputDir);
-                var targetPath = Path.Combine(outputDir, fileName);
+                var targetPath = Path.Combine(tempOutputDir, fileName);
 
                 // Check if the file already exists
                 if (File.Exists(targetPath))
@@ -325,13 +381,27 @@ namespace XcelUnify
             }));
 
             var unifyFolder = ConfigManager.Unify_Folder;
+            // 1. Create temp working folder and copy all files from unifyFolder to tempWorkFolder
+            string timestampHHMMSS = DateTime.Now.ToString("yyyyMMddHHmmss");
+            string tempWorkFolder = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Working", $"Unify_TempWork_{timestampHHMMSS}");
+            Directory.CreateDirectory(tempWorkFolder);
+
+            //copy all files from unifyFolder to tempWorkFolder
+            foreach (var file in Directory.GetFiles(unifyFolder, "*.xlsx", SearchOption.TopDirectoryOnly))
+            {
+                var destFile = Path.Combine(tempWorkFolder, Path.GetFileName(file));
+                File.Copy(file, destFile, true);
+            }
+
+
             var doneFolder = ConfigManager.Done_Folder_Format;
             var reportPath = ConfigManager.Report_File_Format;
 
             // Replace datetime format (yyyyMMddHHmm)
             var timestamp = DateTime.Now.ToString("yyyyMMddHHmm");
             var reportFileName = ConfigManager.Report_File_Format.Replace("yyyyMMddHHmm", timestamp);
-            doneFolder = Path.Combine(unifyFolder, doneFolder.Replace("yyyyMMddHHmm", timestamp));
+            Directory.CreateDirectory(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "UnifyRpt"));
+            doneFolder = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "UnifyRpt", doneFolder.Replace("yyyyMMddHHmm", timestamp));
             reportPath = Path.Combine(doneFolder, reportFileName);
             rptFolderPath = doneFolder;
             //Create folder to store successfully processed files
@@ -373,9 +443,9 @@ namespace XcelUnify
                 reportRow++; // Move to the next row for data
                 await Task.Run(async () =>
                 {
-                    var filesCount = Directory.GetFiles(unifyFolder, "*.xlsx", SearchOption.TopDirectoryOnly).Count();
+                    var filesCount = Directory.GetFiles(tempWorkFolder, "*.xlsx", SearchOption.TopDirectoryOnly).Count();
 
-                    foreach (var file in Directory.GetFiles(unifyFolder, "*.xlsx", SearchOption.TopDirectoryOnly))
+                    foreach (var file in Directory.GetFiles(tempWorkFolder, "*.xlsx", SearchOption.TopDirectoryOnly))
                     {
                         try
                         {
@@ -559,6 +629,20 @@ namespace XcelUnify
                 {
                     lblActionDisplay.Text = "Unification process completed successfully.";
                 }));
+
+                //Now delete temp working folder
+                try
+                {
+                    if (Directory.Exists(tempWorkFolder))
+                    {
+                        Directory.Delete(tempWorkFolder, true); // true = recursive delete
+                    }
+                }
+                catch (Exception ex)
+                {
+                    // Optionally log or show a warning, but do not block the user
+                    Debug.WriteLine($"Failed to delete temp working folder: {ex.Message}");
+                }
             }
             catch (Exception ex)
             {
@@ -635,6 +719,10 @@ namespace XcelUnify
 
                 int rowCount = usedRange.Rows.Count - ConfigManager.Master_First_Data_Row + 1;
                 lblMasterFileRowCount.Text = $"Rows in Master File: {rowCount}";
+                if (ConfigManager.Generate_To_Row == 0)
+                {
+                    ConfigManager.Generate_To_Row = usedRange.Rows.Count;
+                }
             }
             catch (Exception ex)
             {
