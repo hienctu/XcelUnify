@@ -68,19 +68,19 @@ namespace XcelUnify.Helpers
                     config.TryGetValue("TemplateFilePassword", out var templateFilePassword);
 
                     Master_File = !string.IsNullOrEmpty(masterFile)
-                        ? Path.Combine(AppContext.BaseDirectory, masterFile)
+                        ? (Path.IsPathRooted(masterFile) ? masterFile : Path.Combine(AppContext.BaseDirectory, masterFile))
                         : string.Empty;
 
                     Template_File_Path = !string.IsNullOrEmpty(templateFilePath)
-                        ? Path.Combine(AppContext.BaseDirectory, templateFilePath)
+                        ? (Path.IsPathRooted(templateFilePath) ? templateFilePath : Path.Combine(AppContext.BaseDirectory, templateFilePath))
                         : string.Empty;
 
                     Output_Location = !string.IsNullOrEmpty(output)
-                        ? Path.Combine(AppContext.BaseDirectory, output)
+                        ? (Path.IsPathRooted(output) ? output : Path.Combine(AppContext.BaseDirectory, output))
                         : string.Empty;
 
                     Unify_Folder = !string.IsNullOrEmpty(unifyFolder)
-                        ? Path.Combine(AppContext.BaseDirectory, unifyFolder)
+                        ? (Path.IsPathRooted(unifyFolder) ? unifyFolder : Path.Combine(AppContext.BaseDirectory, unifyFolder))
                         : string.Empty;
 
                     Done_Folder_Format = !string.IsNullOrEmpty(doneFolderFormat)
