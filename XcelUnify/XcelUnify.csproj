@@ -55,4 +55,10 @@
     </Content>
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="SetupHelper.ps1">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>
