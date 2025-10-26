@@ -9,11 +9,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Remove="appsettings.json" />
-    <None Remove="Data\dual-template.xlsx" />
-    <None Remove="Data\master.xlsx" />
-    <None Remove="Data\research-template.xlsx" />
-    <None Remove="Data\standard-template.xlsx" />
     <None Remove="Data\template.xlsx" />
     <None Remove="Output\readme.txt" />
     <None Remove="Unify\readme.txt" />
@@ -35,17 +30,20 @@
     <Content Include="appsettings.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="Data\dual-template.xlsx">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    <Content Include="appsettings.json.exclude.testing">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="Data\master.xlsx">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    <Content Include="Data\dual-template.xlsx.exlcuded">
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
     </Content>
-    <Content Include="Data\research-template.xlsx">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    <Content Include="Data\master.xlsx.excluded">
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
     </Content>
-    <Content Include="Data\standard-template.xlsx">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    <Content Include="Data\research-template.xlsx.excluded">
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Data\standard-template.xlsx.excluded">
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
     </Content>
     <Content Include="Output\readme.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
@@ -56,6 +54,9 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Update="Data\Readme.txt">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Update="SetupHelper.ps1">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>

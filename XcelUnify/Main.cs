@@ -10,6 +10,8 @@ namespace XcelUnify
     public partial class Main : Form
     {
         private string rptFolderPath;
+        private string tempStaffUpdateFolder;
+
         public Main()
         {
             InitializeComponent();
@@ -55,12 +57,12 @@ namespace XcelUnify
             Invoke(new System.Action(() =>
             {
                 lblActionDisplay.Visible = true;
-                lblActionDisplay.Text = String.Format("Generating workload files...(from row {0} to row {1} in master data file)", fromRow, toRow) ;
+                lblActionDisplay.Text = String.Format("Generating workload files...(from row {0} to row {1} in master data file)", fromRow, toRow);
                 progressBar.Visible = true;
                 progressBar.Style = ProgressBarStyle.Marquee;
             }));
 
-            
+
 
             int rowCount = 0;
             int colCount = 0;
@@ -172,7 +174,7 @@ namespace XcelUnify
                     }
                 }
 
-               
+
 
 
                 Invoke(new System.Action(() =>
@@ -425,7 +427,7 @@ namespace XcelUnify
                 // Add headers to the report
                 string[] headers = new string[]
                 {
-                    "Subject Code", "Subject Title", "Study Period", "Est. Enrolment", "% Allocation", 
+                    "Subject Code", "Subject Title", "Study Period", "Est. Enrolment", "% Allocation",
                     "Staff Name", "Coordinator", "Lecture Initial", "Lecture Repeat", "Tute/WS Initial", "Tute/WS Repeat",
                     "Practical Initial", "Practical Repeat", "FieldTrip/Excursion", "Marking"
                 };
@@ -492,9 +494,9 @@ namespace XcelUnify
                                     {
                                         otherStaffStartRow = row + 2; // Start row is the row after the label
                                     }
-                                    else if (cellValue.Contains(ConfigManager.TotalHrs_Label, StringComparison.OrdinalIgnoreCase) 
-                                                && otherStaffStartRow > 0 
-                                                && otherStaffStartRow > startRow 
+                                    else if (cellValue.Contains(ConfigManager.TotalHrs_Label, StringComparison.OrdinalIgnoreCase)
+                                                && otherStaffStartRow > 0
+                                                && otherStaffStartRow > startRow
                                                 && row > otherStaffStartRow)
                                     {
                                         otherStaffEndRow = row - 1; // End row is the row before this label
@@ -687,7 +689,7 @@ namespace XcelUnify
             var masterFilePath = ConfigManager.Master_File;
             if (!File.Exists(masterFilePath))
             {
-                MessageBox.Show("Master file not found.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show("Master Data file not found.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
 
@@ -774,9 +776,20 @@ namespace XcelUnify
 
         private void btnViewOutput_Click(object sender, EventArgs e)
         {
-            string folderPath = btnViewOutput.Text.Contains("Output")
-                    ? ConfigManager.Output_Location
-                    : rptFolderPath;
+            string folderPath;
+
+            if (btnViewOutput.Text.Contains("Staff Update") && !string.IsNullOrEmpty(tempStaffUpdateFolder))
+            {
+                folderPath = tempStaffUpdateFolder;
+            }
+            else if (btnViewOutput.Text.Contains("Output"))
+            {
+                folderPath = ConfigManager.Output_Location;
+            }
+            else
+            {
+                folderPath = rptFolderPath;
+            }
 
             if (!string.IsNullOrEmpty(folderPath) && Directory.Exists(folderPath))
             {
@@ -837,6 +850,403 @@ namespace XcelUnify
         private void btnViewDualCampusTemplate_Click(object sender, EventArgs e)
         {
             Process.Start("explorer.exe", Path.GetDirectoryName(txtDualCampusTemplateFile.Text));
+        }
+
+        private async void btnUpdateStaffList_Click(object sender, EventArgs e)
+        {
+            lstReport.Items.Clear();
+            Cursor = Cursors.WaitCursor;
+
+            Invoke(new System.Action(() =>
+            {
+                lblActionDisplay.Visible = true;
+                lblActionDisplay.Text = "Preparing to update staff list in SAFES workload files and three templates...";
+                progressBar.Visible = true;
+                progressBar.Style = ProgressBarStyle.Marquee;
+                lstReport.Visible = true;
+            }));
+
+
+            /* Open after testing */
+            
+            // 1. Create temp working folder
+            string timestamp = DateTime.Now.ToString("yyyyMMddHHmmss");
+            string tempWorkFolder = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Working", $"UpdateStaff_TempWork_{timestamp}");
+            Directory.CreateDirectory(tempWorkFolder);
+            Directory.CreateDirectory(Path.Combine(tempWorkFolder, "Data"));
+
+            // 2. Copy master data file to temp folder
+            var masterFilePath = ConfigManager.Master_File;
+            string tempMasterFile = Path.Combine(tempWorkFolder, "Data", Path.GetFileName(masterFilePath));
+            File.Copy(masterFilePath, tempMasterFile, true);
+
+            // 3. Copy all template files to the temp folder
+            string[] templateFiles = { "standard-template.xlsx", "research-template.xlsx", "dual-template.xlsx" };
+            foreach (var templateFile in templateFiles)
+            {
+                string source = Path.Combine(ConfigManager.Template_File_Path, templateFile);
+                string dest = Path.Combine(tempWorkFolder, "Data", templateFile);
+                if (File.Exists(source))
+                {
+                    File.Copy(source, dest, true);
+                }
+            }
+
+            // 4. Copy all generated files from output folder to temp folder
+            string outputDir = ConfigManager.Output_Location;
+            foreach (var file in Directory.GetFiles(outputDir, "*.xlsx", SearchOption.TopDirectoryOnly))
+            {
+                string dest = Path.Combine(tempWorkFolder, Path.GetFileName(file));
+                File.Copy(file, dest, true);
+            }
+
+            /* Testing only
+            string tempWorkFolder = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Working", $"UpdateStaff_TempWork_20251026120226");
+            tempStaffUpdateFolder = tempWorkFolder;
+            var masterFilePath = ConfigManager.Master_File;
+            string tempMasterFile = Path.Combine(tempWorkFolder, "Data", Path.GetFileName(masterFilePath));
+            */
+
+            // Kill all running Excel processes before starting
+            foreach (var process in System.Diagnostics.Process.GetProcessesByName("EXCEL"))
+            {
+                try { process.Kill(); }
+                catch { /* ignore if cannot kill */ }
+            }
+
+            // 4. (Optional) Add your staff list update logic here, working in tempWorkFolder
+            int noStaffInMaster = 0;
+            List<string> staffNames = new List<string>();
+
+            Application excelApp = null;
+            Workbook masterWb = null;
+            Worksheet staffSheet = null;
+
+            try
+            {
+                await Task.Run(async () =>
+                {
+                    var filesCount = Directory.GetFiles(tempWorkFolder, "*.xlsx", SearchOption.TopDirectoryOnly).Count();
+
+                    excelApp = new Application();
+                    masterWb = excelApp.Workbooks.Open(tempMasterFile);
+                    staffSheet = masterWb.Worksheets["Staff List"] as Worksheet;
+                    if (staffSheet == null)
+                    {
+                        MessageBox.Show("Sheet 'Staff List' not found in master file.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        return;
+                    }
+
+                    Range usedRangeMaster = staffSheet.UsedRange;
+                    int lastRow = usedRangeMaster.Rows.Count;
+
+                    // Start from row 2 (row 1 is header)
+                    for (int row = 2; row <= lastRow; row++)
+                    {
+                        var value = (usedRangeMaster.Cells[row, 1] as Range)?.Value2?.ToString();
+                        if (!string.IsNullOrWhiteSpace(value))
+                        {
+                            staffNames.Add(value);
+                            noStaffInMaster++;
+                        }
+                    }
+
+                    /* Update three templates first */
+                    // Update staff list in all templates
+                    // 1. Gather all files to update
+                    string[] templateFilesToUpdate = { "standard-template.xlsx", "research-template.xlsx", "dual-template.xlsx" };
+                    var filesToUpdate = new List<string>();
+
+                    // Add templates from Data subfolder
+                    foreach (var templateFileName in templateFilesToUpdate)
+                    {
+                        var templatePath = Path.Combine(tempWorkFolder, "Data", templateFileName);
+                        if (File.Exists(templatePath))
+                            filesToUpdate.Add(templatePath);
+                    }
+
+                    // Add all .xlsx files in tempWorkFolder (excluding templates if desired)
+                    var allXlsxFiles = Directory.GetFiles(tempWorkFolder, "*.xlsx", SearchOption.TopDirectoryOnly);
+                    foreach (var file in allXlsxFiles)
+                    {
+                        if (!filesToUpdate.Contains(file)) // Avoid double-processing templates
+                            filesToUpdate.Add(file);
+                    }
+                    // 2. Process each file
+                    //Testing - Take 10
+                    //foreach (var templateFileName in filesToUpdate.Take(10))
+                    foreach (var templateFileName in filesToUpdate)
+                    {
+
+                        Workbook templateWb = null;
+                        Worksheet staffListSheet = null;
+                        Worksheet srcWs = null;
+                        Range usedRange = null;
+
+                        try
+                        {
+                            excelApp = new Application();
+                            templateWb = excelApp.Workbooks.Open(templateFileName);
+                            templateWb.Unprotect(ConfigManager.Template_File_Password);
+
+                            staffListSheet = templateWb.Worksheets[ConfigManager.StaffList_Sheet_Name] as Worksheet;
+                            staffListSheet.Unprotect(ConfigManager.Template_File_Password);
+
+                            if (staffListSheet == null)
+                            {
+                                MessageBox.Show($"Sheet '{ConfigManager.StaffList_Sheet_Name}' not found in {templateFileName}.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                                continue;
+                            }
+
+                            // Count the existing staff entries from E4 downwards
+                            usedRange = staffListSheet.UsedRange;
+                            int existingStaffCount = 0;
+                            for (int r = 4; r <= usedRange.Rows.Count; r++)
+                            {
+                                var cellValue = (usedRange.Cells[r, 5] as Range)?.Value2?.ToString();
+                                if (!string.IsNullOrWhiteSpace(cellValue))
+                                {
+                                    existingStaffCount++;
+                                }
+                                else
+                                {
+                                    break; // Stop counting when an empty cell is found
+                                }
+                            }
+
+                            if (existingStaffCount > noStaffInMaster)
+                            {
+                                var result = MessageBox.Show(
+                                    $"The template '{templateFileName}' has {existingStaffCount} staff entries, which is more than the {noStaffInMaster} entries in the master file. Do you want to proceed with the update? Extra entries will be removed.",
+                                    "Confirmation", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+                                if (result == DialogResult.No)
+                                {
+                                    return; // exit this method without making changes    
+                                }
+                            }
+
+                            // Clear existing entries from E4 downwards
+                            staffListSheet.Range["E4:E" + (existingStaffCount + 3)].ClearContents();
+
+                            // Write new staff names starting from E4
+                            for (int i = 0; i < staffNames.Count; i++)
+                            {
+                                staffListSheet.Cells[i + 4, 5] = staffNames[i]; // Column E is the 5th column
+                            }
+
+                            // Update the text in E2 - updated as at today dd/mm/yyyy
+                            staffListSheet.Cells[2, 5] = $"Updated as at {DateTime.Now:dd/MM/yyyy}";
+
+                            // Protect the workbook again
+                            staffListSheet.Protect(ConfigManager.Template_File_Password);
+
+                            // Hide the Staff List sheet again
+                            staffListSheet.Visible = XlSheetVisibility.xlSheetHidden;
+
+                            // Save and close the template
+                            templateWb.Save();
+
+                            //Start updating data validation
+                            srcWs = (Worksheet)templateWb.Worksheets[ConfigManager.Workload_Main_Sheet];
+                            srcWs.Unprotect(ConfigManager.Template_File_Password);
+                            // Find START and END in column A
+                            int startRow = 0,
+                                endRow = 0;
+
+                            // Assuming labels are in column A
+                            for (int row = 1; row <= srcWs.UsedRange.Rows.Count; row++)
+                            {
+                                var cellValue = (srcWs.Cells[row, 2] as Range)?.Value2?.ToString();
+
+                                if (cellValue != null)
+                                {
+                                    if (cellValue.Trim().ToLower() == ConfigManager.SafesStaff_Label.Trim().ToLower())
+                                    {
+                                        startRow = row + 2; // Start row is the row after the label
+                                    }
+                                    else if (cellValue.Contains(ConfigManager.TotalHrs_Label, StringComparison.OrdinalIgnoreCase)
+                                                && startRow > 0 && row > startRow)
+                                    {
+                                        endRow = row - 1; // End row is the row before this label
+                                        break;
+                                    }
+                                }
+                            }
+
+                            // Update data validation for staff names in column B from startRow to endRow
+                            for (int r = startRow; r <= endRow; r++)
+                            {
+                                Range cell = srcWs.Cells[r, 2] as Range; // Column B
+                                if (cell != null)
+                                {
+                                    // Create the data validation formula
+                                    string formula = $"='{ConfigManager.StaffList_Sheet_Name}'!$E$4:$E${staffNames.Count + 3}";
+                                    // Add data validation
+                                    cell.Validation.Delete(); // Remove any existing validation
+                                    cell.Validation.Add(
+                                        XlDVType.xlValidateList,
+                                        XlDVAlertStyle.xlValidAlertStop,
+                                        XlFormatConditionOperator.xlBetween,
+                                        formula,
+                                        Type.Missing);
+                                    cell.Validation.IgnoreBlank = true;
+                                    cell.Validation.InCellDropdown = true;
+
+                                }
+                            }
+
+                            srcWs.Protect(ConfigManager.Template_File_Password);
+                            templateWb.Protect(ConfigManager.Template_File_Password);
+                            templateWb.Save();
+
+                            Invoke(new System.Action(() =>
+                            {
+                                lblReport.Visible = true;
+                                lblReport.Text = $"Updated {lstReport.Items.Count + 1} out of {filesCount} files and 3 templates successfully...";
+                                lstReport.Visible = true;
+                                lstReport.Items.Add($"Updating {lstReport.Items.Count + 1}: {Path.GetFileName(templateFileName)}");
+                            }));
+                        }
+                        catch (Exception ex)
+                        {
+                            Invoke(new System.Action(() =>
+                            {
+                                lstReport.Items.Add($"Error - File {Path.GetFileName(templateFileName)} encountered an error. Skipping...");
+                            }));
+                        }
+                        finally
+                        {
+                            if (staffListSheet != null) Marshal.ReleaseComObject(staffListSheet);
+                            if (templateWb != null)
+                            {
+                                templateWb.Close(false);
+                                Marshal.ReleaseComObject(templateWb);
+                            }
+                        }
+                    }
+
+                    // Release COM objects - master file
+                    if (usedRangeMaster != null) Marshal.ReleaseComObject(usedRangeMaster);
+
+                }); // End of Task.Run
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error reading 'Staff List': {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            finally
+            {
+                if (staffSheet != null) Marshal.ReleaseComObject(staffSheet);
+                if (masterWb != null)
+                {
+                    masterWb.Close(false);
+                    Marshal.ReleaseComObject(masterWb);
+                }
+                if (excelApp != null)
+                {
+                    excelApp.Quit();
+                    Marshal.ReleaseComObject(excelApp);
+                }
+                GC.Collect();
+                GC.WaitForPendingFinalizers();
+            }
+
+            // 5. Clean up UI
+            Invoke(new System.Action(() =>
+            {
+                lblActionDisplay.Text = "Staff list update preparation completed.";
+                Cursor = Cursors.Default;
+                progressBar.Style = ProgressBarStyle.Blocks;
+                progressBar.Visible = false;
+
+                //need to view the button and when click on it open the temp folder
+                btnViewOutput.Visible = true;
+                btnViewOutput.Text = "View Staff Update Temp Folder";
+            }));
+
+
+            // 6. (Optional) Clean up temp folder if needed
+            // try
+            // {
+            //     if (Directory.Exists(tempWorkFolder))
+            //     {
+            //         Directory.Delete(tempWorkFolder, true);
+            //     }
+            // }
+            // catch (Exception ex)
+            // {
+            //     Debug.WriteLine($"Failed to delete temp working folder: {ex.Message}");
+            // }
+
+        }
+
+        private void btnUploadStaffUpdate_Click(object sender, EventArgs e)
+        {
+            //Confirm user that are you sure to copy files from Staff Update Temp Folder overwrite existing files in SharePoint
+            //In message box, we show 2 hyperlinks of the Staff Update Temp Folder and SharePoint Output Location
+            var tempFolder = tempStaffUpdateFolder;
+            // Ensure tempFolder is set - if tempStaffUpdateFolder is null or empty, show error
+            if (string.IsNullOrEmpty(tempFolder))
+            {
+                MessageBox.Show("No Staff Update Temp Folder found. Only run this upload only after running Update Staff List.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+
+            var sharepointFolder = ConfigManager.Output_Location;
+
+            using (var dlg = new HyperlinkForm(tempFolder, sharepointFolder))
+            {
+                var result = dlg.ShowDialog(this);
+                if (result == DialogResult.Yes)
+                {
+                    // Proceed with the upload
+                    //3 template files in Data subfolder need to be copied to TemplateFilePath
+                    try
+                    {
+                        //rename the temp folder to indicate upload completed
+                        string completedFolder = Path.Combine(Path.GetDirectoryName(tempFolder), tempFolder + "-Completed", Path.GetFileName(tempFolder));
+                        Directory.CreateDirectory(Path.GetDirectoryName(completedFolder));
+                        Directory.CreateDirectory(Path.Combine(completedFolder, "Data"));
+
+                        // Also copy the 3 template files from Data subfolder
+                        string dataSubfolder = Path.Combine(tempFolder, "Data");
+                        string[] templateFiles = { "standard-template.xlsx", "research-template.xlsx", "dual-template.xlsx" };
+                        foreach (var templateFile in templateFiles)
+                        {
+                            string source = Path.Combine(dataSubfolder, templateFile);
+                            string dest = Path.Combine(ConfigManager.Template_File_Path, templateFile);
+                            if (File.Exists(source))
+                            {
+                                File.Copy(source, dest, true);
+                                //Move to complete data
+                                string destCompleted = Path.Combine(completedFolder, "Data", templateFile);
+                                File.Move(source, destCompleted, true);
+                            }
+                        }
+
+                        //Copy all files from tempFolder to sharepointFolder
+                        foreach (var file in Directory.GetFiles(tempFolder, "*.xlsx", SearchOption.TopDirectoryOnly))
+                        {
+                            var destFile = Path.Combine(sharepointFolder, Path.GetFileName(file));
+                            File.Copy(file, destFile, true); // true = overwrite existing files
+                            //Move to completed folder
+                            var destFileCompleted = Path.Combine(completedFolder, Path.GetFileName(file));
+                            File.Move(file, destFileCompleted, true);
+                        }
+
+                        MessageBox.Show("All files have been successfully uploaded to SharePoint Output Location.", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show($"Error during upload: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
+                }
+                // If No, simply return
+                else
+                {
+                    return;
+                }
+            }
         }
     }
 }

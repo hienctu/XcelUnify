@@ -46,6 +46,8 @@
             txtMasterFile = new TextBox();
             label1 = new Label();
             groupBox2 = new GroupBox();
+            btnUploadStaffUpdate = new Button();
+            btnUpdateStaffList = new Button();
             btnClose = new Button();
             btnCloseExcels = new Button();
             progressBar = new ProgressBar();
@@ -60,7 +62,7 @@
             // btnGenerate
             // 
             btnGenerate.AllowDrop = true;
-            btnGenerate.Location = new Point(13, 76);
+            btnGenerate.Location = new Point(13, 61);
             btnGenerate.Name = "btnGenerate";
             btnGenerate.Size = new Size(113, 40);
             btnGenerate.TabIndex = 0;
@@ -70,7 +72,7 @@
             // 
             // UnifyBtn
             // 
-            UnifyBtn.Location = new Point(13, 134);
+            UnifyBtn.Location = new Point(13, 108);
             UnifyBtn.Name = "UnifyBtn";
             UnifyBtn.Size = new Size(113, 34);
             UnifyBtn.TabIndex = 1;
@@ -81,10 +83,10 @@
             // lblApplicationTitle
             // 
             lblApplicationTitle.AutoSize = true;
-            lblApplicationTitle.Font = new Font("Lucida Bright", 15.75F, FontStyle.Bold, GraphicsUnit.Point, 0);
+            lblApplicationTitle.Font = new Font("Microsoft Sans Serif", 15.75F, FontStyle.Bold, GraphicsUnit.Point, 0);
             lblApplicationTitle.Location = new Point(12, 20);
             lblApplicationTitle.Name = "lblApplicationTitle";
-            lblApplicationTitle.Size = new Size(304, 24);
+            lblApplicationTitle.Size = new Size(304, 25);
             lblApplicationTitle.TabIndex = 2;
             lblApplicationTitle.Text = "SAFES Workload Generator";
             // 
@@ -232,6 +234,8 @@
             // 
             // groupBox2
             // 
+            groupBox2.Controls.Add(btnUploadStaffUpdate);
+            groupBox2.Controls.Add(btnUpdateStaffList);
             groupBox2.Controls.Add(btnClose);
             groupBox2.Controls.Add(btnCloseExcels);
             groupBox2.Controls.Add(UnifyBtn);
@@ -242,6 +246,26 @@
             groupBox2.TabIndex = 5;
             groupBox2.TabStop = false;
             groupBox2.Text = "Action";
+            // 
+            // btnUploadStaffUpdate
+            // 
+            btnUploadStaffUpdate.Location = new Point(16, 197);
+            btnUploadStaffUpdate.Name = "btnUploadStaffUpdate";
+            btnUploadStaffUpdate.Size = new Size(108, 59);
+            btnUploadStaffUpdate.TabIndex = 5;
+            btnUploadStaffUpdate.Text = "Upload Staff Update to SharePoint";
+            btnUploadStaffUpdate.UseVisualStyleBackColor = true;
+            btnUploadStaffUpdate.Click += btnUploadStaffUpdate_Click;
+            // 
+            // btnUpdateStaffList
+            // 
+            btnUpdateStaffList.Location = new Point(16, 160);
+            btnUpdateStaffList.Name = "btnUpdateStaffList";
+            btnUpdateStaffList.Size = new Size(108, 31);
+            btnUpdateStaffList.TabIndex = 4;
+            btnUpdateStaffList.Text = "Update Staff List";
+            btnUpdateStaffList.UseVisualStyleBackColor = true;
+            btnUpdateStaffList.Click += btnUpdateStaffList_Click;
             // 
             // btnClose
             // 
@@ -356,5 +380,7 @@
         private Button btnViewResearchTemplate;
         private TextBox txtResearchTemplateFile;
         private Label label2;
+        private Button btnUpdateStaffList;
+        private Button btnUploadStaffUpdate;
     }
 }

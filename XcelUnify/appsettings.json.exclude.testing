@@ -1,0 +1,27 @@
+{
+  "MasterDataFilePath": "C:\\Users\\hienc\\The University of Melbourne\\School of Agriculture, Food and Ecosystem Sciences (SAFES) - Teaching workload\\1 - Workload admin\\Data\\master.xlsx",
+  "MasterDataFirstDataRow": "4",
+  "BatchSizeToGenerate": "10",
+
+  "TemplateFilePath": "C:\\Users\\hienc\\The University of Melbourne\\School of Agriculture, Food and Ecosystem Sciences (SAFES) - Teaching workload\\1 - Workload admin\\Data",
+  "TemplateFilePassword": "LisaW",
+
+  "Output": "C:\\Users\\hienc\\The University of Melbourne\\School of Agriculture, Food and Ecosystem Sciences (SAFES) - Teaching workload\\2 - Subject templates",
+  "Unify": "C:\\Users\\hienc\\The University of Melbourne\\School of Agriculture, Food and Ecosystem Sciences (SAFES) - Teaching workload\\2 - Subject templates",
+
+  "WorkloadMainSheet": "1",
+  "CourseworkText": "Standard",
+  "ResearchText": "Research",
+  "InternshipText": "Internship",
+  "DualCampusText": "Dual campus",
+
+  "StaffListSheetName": "(HIDE) Mapping Tables",
+
+  "SafesStaffLabel": "SAFES Staff",
+  "OtherStaffLabel": "Other Staff",
+  "TotalHrsLabel": "Total Hrs",
+  "AllocatedOverallAddress": "K8",
+
+  "GenerateFromRow": "4",
+  "GenerateToRow": "0"
+}

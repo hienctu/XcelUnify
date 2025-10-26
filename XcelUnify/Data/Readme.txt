@@ -1,0 +1,1 @@
+From Version 1.1 (26 Oct 2025) - added new feature - Staff List Update - assuming we already have master and template files so we dont include them again here.

@@ -30,6 +30,8 @@ namespace XcelUnify.Helpers
         public static string OtherStaff_Label { get; private set; } = string.Empty;
         public static string Allocated_Overall_Address { get; private set; } = string.Empty;
 
+        // Change StaffList_Sheet_Name from a get-only property to a get/set property
+        public static string StaffList_Sheet_Name { get; private set; } = "(HIDE) Mapping Tables";
 
         public static void Init()
         {
@@ -66,6 +68,7 @@ namespace XcelUnify.Helpers
                     config.TryGetValue("AllocatedOverallAddress", out var allocatedOverallAddress);
 
                     config.TryGetValue("TemplateFilePassword", out var templateFilePassword);
+                    config.TryGetValue("StaffListSheetName", out var staffListSheetName);
 
                     Master_File = !string.IsNullOrEmpty(masterFile)
                         ? (Path.IsPathRooted(masterFile) ? masterFile : Path.Combine(AppContext.BaseDirectory, masterFile))
@@ -125,6 +128,8 @@ namespace XcelUnify.Helpers
                         allocatedOverallAddress : string.Empty;
 
                     Template_File_Password = !string.IsNullOrEmpty(templateFilePassword) ? templateFilePassword : string.Empty;
+
+                    StaffList_Sheet_Name = !string.IsNullOrEmpty(staffListSheetName) ? staffListSheetName : "(HIDE) Mapping Tables";
                 }
                 else
                 {
@@ -151,6 +156,7 @@ namespace XcelUnify.Helpers
                     Allocated_Overall_Address = string.Empty;
 
                     Template_File_Password = string.Empty;
+                    StaffList_Sheet_Name = "(HIDE) Mapping Tables";
                 }
             }
             catch
@@ -178,6 +184,7 @@ namespace XcelUnify.Helpers
                 Allocated_Overall_Address = string.Empty;
 
                 Template_File_Password = string.Empty;
+                StaffList_Sheet_Name = "(HIDE) Mapping Tables";
             }
         }
 
