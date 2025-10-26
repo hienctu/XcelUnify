@@ -57,6 +57,9 @@
     <None Update="Data\Readme.txt">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Update="Data\XcelUnify.ico">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Update="SetupHelper.ps1">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
