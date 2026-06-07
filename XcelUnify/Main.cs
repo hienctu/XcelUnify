@@ -277,18 +277,11 @@ namespace XcelUnify
             var identifier = $"{safeSubjectCode}_{safeStudyPeriod}";
             var fileName = $"{identifier}.xlsx";
 
-            //Filter the unified master data column D with value identifier
-           
-            Range filterRange = null;
-            Range filteredRange = null;
             Range staffListRange = null;
+            List<int> foundRows = new List<int>();
             if (unifiedWorksheet != null)
             {
-                filterRange = unifiedWorksheet.UsedRange;
-                //filter by subject code column 1 and stdy period column 3
-                filterRange.AutoFilter(1, safeSubjectCode.Trim());
-                filterRange.AutoFilter(3, safeStudyPeriod.Trim());
-                filteredRange = filterRange.SpecialCells(XlCellType.xlCellTypeVisible);
+                foundRows = FindMatchingRowsUnifiedMaster(unifiedWorksheet, subjectCode, studyPeriod);            
             }
 
             try
@@ -350,11 +343,12 @@ namespace XcelUnify
 
                 dataSheet.Visible = XlSheetVisibility.xlSheetVeryHidden;
 
-                if (filteredRange != null)
+                if (foundRows.Count > 0)
                 {
                     mainSheet = (Worksheet)workbook.Worksheets[1];
                     mainSheet.Unprotect(ConfigManager.Template_File_Password);
                     staffListSheet = (Worksheet)workbook.Worksheets[ConfigManager.StaffList_Sheet_Name];
+                    var usedUnifiedMasterRange = unifiedWorksheet.UsedRange;
 
                     if (staffListSheet != null)
                     {
@@ -365,101 +359,102 @@ namespace XcelUnify
                     FindStaffRanges(mainSheet, out int startRow, out int endRow, out int otherStaffStartRow, out int otherStaffEndRow);
 
                     //copy the filter range into dataSheet starting from B24
-                    int rows = filteredRange.Rows.Count;
-                    int cols = filteredRange.Columns.Count;
-                    //row 1 is header, so start from row 2
-                    for (int r = 2; r <= rows; r++)
-                    {
-                        //Staff name in column 6
-                        string staffName = filteredRange.Cells[r,6]?.Value2?.ToString();
-                        if (string.IsNullOrWhiteSpace(staffName))
+                    
+                        //row 1 is header, so start from row 2
+                        for (int r = 0; r < foundRows.Count; r++)
                         {
-                            continue; // Skip rows where column F is empty
-                        }
-                        else
-                        {
-                            if (string.Equals(staffName.Trim(), ConfigManager.SafesStaff_Label, StringComparison.OrdinalIgnoreCase))
+                            var v = GetCellValueAsString(usedUnifiedMasterRange.Cells[foundRows[r], 1]);
+                            //Staff name in column 6
+                            string staffName = usedUnifiedMasterRange.Cells[foundRows[r], 6]?.Value2?.ToString();
+                            if (string.IsNullOrWhiteSpace(staffName))
                             {
-                                for (int c = 3; c <= 12; c++)
-                                {
-                                    mainSheet.Cells[otherStaffStartRow, c] = filteredRange.Cells[r, c + 4]?.Value2;
-                                }
-                            }
-                            else if (string.Equals(staffName.Trim(), ConfigManager.Casual_Lecturers, StringComparison.OrdinalIgnoreCase))
-                            {
-                                for (int c = 3; c <= 12; c++)
-                                {
-                                    mainSheet.Cells[otherStaffStartRow + 1, c] = filteredRange.Cells[r, c + 4]?.Value2;
-                                }
-                            }
-                            else if (string.Equals(staffName.Trim(), ConfigManager.Casual_Tutors, StringComparison.OrdinalIgnoreCase))
-                            {
-                                for (int c = 3; c <= 12; c++)
-                                {
-                                    mainSheet.Cells[otherStaffStartRow + 2, c] = filteredRange.Cells[r, c + 4]?.Value2;
-                                }
+                                continue; // Skip rows where column F is empty
                             }
                             else
                             {
-                                //Find staffname in staff list cloumn 5, from row 4
-                                //if not exist then insert the staff name into staff list 
-                                if (staffListRange != null)
+                                if (string.Equals(staffName.Trim(), ConfigManager.Non_Safes_UoM_Staff, StringComparison.OrdinalIgnoreCase))
                                 {
-                                    Range found = staffListRange.Find(staffName, LookIn: XlFindLookIn.xlValues, LookAt: XlLookAt.xlWhole);
-                                    if (found == null)
+                                    for (int c = 3; c <= 12; c++)
                                     {
-                                        int newRow = FindFirstEmptyRowInColumn(staffListSheet, 5, 4);
-                                        staffListSheet.Cells[newRow, 5] = staffName;
-
-
-                                        // Create the data validation formula
-                                        for (int i = startRow; i <= endRow; i++)
+                                        mainSheet.Cells[otherStaffStartRow, c] = usedUnifiedMasterRange.Cells[foundRows[r], c + 4]?.Value2;
+                                    }
+                                }
+                                else if (string.Equals(staffName.Trim(), ConfigManager.Casual_Lecturers, StringComparison.OrdinalIgnoreCase))
+                                {
+                                    for (int c = 3; c <= 12; c++)
+                                    {
+                                        mainSheet.Cells[otherStaffStartRow + 1, c] = usedUnifiedMasterRange.Cells[foundRows[r], c + 4]?.Value2;
+                                    }
+                                }
+                                else if (string.Equals(staffName.Trim(), ConfigManager.Casual_Tutors, StringComparison.OrdinalIgnoreCase))
+                                {
+                                    for (int c = 3; c <= 12; c++)
+                                    {
+                                        mainSheet.Cells[otherStaffStartRow + 2, c] = usedUnifiedMasterRange.Cells[foundRows[r], c + 4]?.Value2;
+                                    }
+                                }
+                                else
+                                {
+                                    //Find staffname in staff list cloumn 5, from row 4
+                                    //if not exist then insert the staff name into staff list 
+                                    if (staffListRange != null)
+                                    {
+                                        Range found = staffListRange.Find(staffName, LookIn: XlFindLookIn.xlValues, LookAt: XlLookAt.xlWhole);
+                                        if (found == null)
                                         {
-                                            Range cell = mainSheet.Cells[i, 2] as Range;
-                                            if (cell != null)
+                                            int newRow = FindFirstEmptyRowInColumn(staffListSheet, 5, 4);
+                                            staffListSheet.Cells[newRow, 5] = staffName;
+
+
+                                            // Create the data validation formula
+                                            for (int i = startRow; i <= endRow; i++)
                                             {
-                                                try
+                                                Range cell = mainSheet.Cells[i, 2] as Range;
+                                                if (cell != null)
                                                 {
-                                                    string formula = $"='{ConfigManager.StaffList_Sheet_Name}'!$E$4:$E${newRow + 3}";
-                                                    // Add data validation
-                                                    cell.Validation.Delete(); // Remove any existing validation
-                                                    cell.Validation.Add(
-                                                        XlDVType.xlValidateList,
-                                                        XlDVAlertStyle.xlValidAlertStop,
-                                                        XlFormatConditionOperator.xlBetween,
-                                                        formula,
-                                                        Type.Missing);
-                                                    cell.Validation.IgnoreBlank = true;
-                                                    cell.Validation.InCellDropdown = true;
-                                                }
-                                                catch (Exception ex)
-                                                {
-                                                    Debug.WriteLine($"Failed to set data validation for cell {cell.Address}: {ex.Message}");
+                                                    try
+                                                    {
+                                                        string formula = $"='{ConfigManager.StaffList_Sheet_Name}'!$E$4:$E${newRow + 3}";
+                                                        // Add data validation
+                                                        cell.Validation.Delete(); // Remove any existing validation
+                                                        cell.Validation.Add(
+                                                            XlDVType.xlValidateList,
+                                                            XlDVAlertStyle.xlValidAlertStop,
+                                                            XlFormatConditionOperator.xlBetween,
+                                                            formula,
+                                                            Type.Missing);
+                                                        cell.Validation.IgnoreBlank = true;
+                                                        cell.Validation.InCellDropdown = true;
+                                                    }
+                                                    catch (Exception ex)
+                                                    {
+                                                        Debug.WriteLine($"Failed to set data validation for cell {cell.Address}: {ex.Message}");
+                                                    }
                                                 }
                                             }
                                         }
                                     }
-                                }
 
-                                mainSheet.Cells[startRow, 2] = staffName;
-                                for (int c = 3; c <= 12; c++)
-                                {
-                                    try
+                                    mainSheet.Cells[startRow, 2] = staffName;
+                                    for (int c = 3; c <= 12; c++)
                                     {
-                                        string val = GetCellValueAsString(filteredRange.Cells[r, c + 4]);
-                                        mainSheet.Cells[startRow, c] = val;
+                                        try
+                                        {
+                                            string val = GetCellValueAsString(usedUnifiedMasterRange.Cells[foundRows[r], c + 4]);
+                                            mainSheet.Cells[startRow, c] = val;
+                                        }
+                                        catch (Exception ex)
+                                        {
+                                            Debug.WriteLine($"Failed to write value for staff {staffName} at main sheet row {startRow}, column {c}: {ex.Message}");
+                                        }
                                     }
-                                    catch (Exception ex)
-                                    {
-                                        Debug.WriteLine($"Failed to write value for staff {staffName} at main sheet row {startRow}, column {c}: {ex.Message}");
-                                    }
+                                    startRow++;
                                 }
-                                startRow++;
                             }
-                        }
+                        
                     }
-                }
 
+                }
                 //Remove filter
                 unifiedWorksheet.AutoFilterMode = false;
 
@@ -1521,6 +1516,36 @@ namespace XcelUnify
             {
                 // do not release `cell` here - caller should release COM objects when appropriate
             }
+        }
+
+        // Add inside the Main class near other private helpers
+        public static List<int> FindMatchingRowsUnifiedMaster(
+            Worksheet worksheet,
+            string subjectCode,
+            string studyPeriod)
+                {
+                    Range used = worksheet.UsedRange;
+
+                    int rowCount = used.Rows.Count;
+
+                    List<int> matchedRows = new List<int>();
+
+                    string subjectTrim = subjectCode?.Trim();
+                    string periodTrim = studyPeriod?.Trim();
+
+                    for (int r = 2; r <= rowCount; r++) // assume header row = 1
+                    {
+                        var subject = (used.Cells[r, 1] as Range)?.Value2?.ToString()?.Trim();
+                        var period = (used.Cells[r, 3] as Range)?.Value2?.ToString()?.Trim();
+
+                        if (subject == subjectTrim &&
+                            period == periodTrim)
+                        {
+                            matchedRows.Add(r);
+                        }
+                    }
+
+                    return matchedRows;
         }
     }
 }
