@@ -7,6 +7,7 @@ namespace XcelUnify.Helpers
     public static class ConfigManager
     {
         public static string Master_File { get; private set; } = string.Empty;
+        public static string Unified_Master_File { get; set; } = string.Empty;
         public static string Template_File_Path { get; private set; } = string.Empty;
         public static string Template_File_Password { get; private set; } = string.Empty;
         public static string Output_Location { get; private set; } = string.Empty;
@@ -33,6 +34,11 @@ namespace XcelUnify.Helpers
         // Change StaffList_Sheet_Name from a get-only property to a get/set property
         public static string StaffList_Sheet_Name { get; private set; } = "(HIDE) Mapping Tables";
 
+        public static string Non_Safes_UoM_Staff {  get; private set; } = string.Empty;
+        public static string Casual_Lecturers { get; private set; } = string.Empty;
+        public static string Casual_Tutors { get; private set; } = string.Empty;
+    
+        
         public static void Init()
         {
             try
@@ -46,6 +52,7 @@ namespace XcelUnify.Helpers
                 if (config != null)
                 {
                     config.TryGetValue("MasterDataFilePath", out var masterFile);
+                    config.TryGetValue("UnifiedMasterDataFilePath", out var unifiedMasterFile);
                     config.TryGetValue("TemplateFilePath", out var templateFilePath);
                     config.TryGetValue("Output", out var output);
                     config.TryGetValue("Unify", out var unifyFolder);
@@ -70,8 +77,15 @@ namespace XcelUnify.Helpers
                     config.TryGetValue("TemplateFilePassword", out var templateFilePassword);
                     config.TryGetValue("StaffListSheetName", out var staffListSheetName);
 
+                    config.TryGetValue("NonSafesUoMStaff", out var nonSafesUoMStaff);
+                    config.TryGetValue("CasualLecturers", out var casualLecturers);
+                    config.TryGetValue("CasualTutors", out var casualTutors);
+
                     Master_File = !string.IsNullOrEmpty(masterFile)
                         ? (Path.IsPathRooted(masterFile) ? masterFile : Path.Combine(AppContext.BaseDirectory, masterFile))
+                        : string.Empty;
+                    Unified_Master_File = !string.IsNullOrEmpty(unifiedMasterFile)
+                        ? (Path.IsPathRooted(unifiedMasterFile) ? unifiedMasterFile : Path.Combine(AppContext.BaseDirectory, unifiedMasterFile))
                         : string.Empty;
 
                     Template_File_Path = !string.IsNullOrEmpty(templateFilePath)
@@ -130,6 +144,10 @@ namespace XcelUnify.Helpers
                     Template_File_Password = !string.IsNullOrEmpty(templateFilePassword) ? templateFilePassword : string.Empty;
 
                     StaffList_Sheet_Name = !string.IsNullOrEmpty(staffListSheetName) ? staffListSheetName : "(HIDE) Mapping Tables";
+
+                    Non_Safes_UoM_Staff = !string.IsNullOrEmpty(nonSafesUoMStaff) ? nonSafesUoMStaff : string.Empty;
+                    Casual_Lecturers = !string.IsNullOrEmpty(casualLecturers) ? casualLecturers : string.Empty;
+                    Casual_Tutors = !string.IsNullOrEmpty(casualTutors) ? casualTutors : string.Empty;
                 }
                 else
                 {

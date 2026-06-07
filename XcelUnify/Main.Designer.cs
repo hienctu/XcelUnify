@@ -33,6 +33,9 @@
             lblApplicationTitle = new Label();
             lblMasterFile = new Label();
             groupBox1 = new GroupBox();
+            btnViewUnifiedMaster = new Button();
+            txtUnifiedMasterFile = new TextBox();
+            lblUnifiedMasterFile = new Label();
             btnViewDualCampusTemplate = new Button();
             txtDualCampusTemplateFile = new TextBox();
             label3 = new Label();
@@ -102,6 +105,9 @@
             // 
             // groupBox1
             // 
+            groupBox1.Controls.Add(btnViewUnifiedMaster);
+            groupBox1.Controls.Add(txtUnifiedMasterFile);
+            groupBox1.Controls.Add(lblUnifiedMasterFile);
             groupBox1.Controls.Add(btnViewDualCampusTemplate);
             groupBox1.Controls.Add(txtDualCampusTemplateFile);
             groupBox1.Controls.Add(label3);
@@ -117,13 +123,41 @@
             groupBox1.Controls.Add(lblMasterFile);
             groupBox1.Location = new Point(16, 57);
             groupBox1.Name = "groupBox1";
-            groupBox1.Size = new Size(700, 232);
+            groupBox1.Size = new Size(700, 283);
             groupBox1.TabIndex = 4;
             groupBox1.TabStop = false;
             // 
+            // btnViewUnifiedMaster
+            // 
+            btnViewUnifiedMaster.Location = new Point(601, 78);
+            btnViewUnifiedMaster.Name = "btnViewUnifiedMaster";
+            btnViewUnifiedMaster.Size = new Size(75, 23);
+            btnViewUnifiedMaster.TabIndex = 18;
+            btnViewUnifiedMaster.Text = "View File";
+            btnViewUnifiedMaster.UseVisualStyleBackColor = true;
+            btnViewUnifiedMaster.Click += btnViewUnifiedMaster_Click;
+            // 
+            // txtUnifiedMasterFile
+            // 
+            txtUnifiedMasterFile.Location = new Point(224, 78);
+            txtUnifiedMasterFile.Name = "txtUnifiedMasterFile";
+            txtUnifiedMasterFile.ReadOnly = true;
+            txtUnifiedMasterFile.Size = new Size(357, 23);
+            txtUnifiedMasterFile.TabIndex = 17;
+            // 
+            // lblUnifiedMasterFile
+            // 
+            lblUnifiedMasterFile.AutoSize = true;
+            lblUnifiedMasterFile.Font = new Font("Segoe UI", 9.75F, FontStyle.Bold, GraphicsUnit.Point, 0);
+            lblUnifiedMasterFile.Location = new Point(6, 79);
+            lblUnifiedMasterFile.Name = "lblUnifiedMasterFile";
+            lblUnifiedMasterFile.Size = new Size(113, 17);
+            lblUnifiedMasterFile.TabIndex = 16;
+            lblUnifiedMasterFile.Text = "Master Data File:";
+            // 
             // btnViewDualCampusTemplate
             // 
-            btnViewDualCampusTemplate.Location = new Point(601, 180);
+            btnViewDualCampusTemplate.Location = new Point(601, 239);
             btnViewDualCampusTemplate.Name = "btnViewDualCampusTemplate";
             btnViewDualCampusTemplate.Size = new Size(75, 23);
             btnViewDualCampusTemplate.TabIndex = 15;
@@ -133,7 +167,7 @@
             // 
             // txtDualCampusTemplateFile
             // 
-            txtDualCampusTemplateFile.Location = new Point(224, 180);
+            txtDualCampusTemplateFile.Location = new Point(224, 239);
             txtDualCampusTemplateFile.Name = "txtDualCampusTemplateFile";
             txtDualCampusTemplateFile.ReadOnly = true;
             txtDualCampusTemplateFile.Size = new Size(357, 23);
@@ -143,7 +177,7 @@
             // 
             label3.AutoSize = true;
             label3.Font = new Font("Segoe UI", 9.75F, FontStyle.Bold, GraphicsUnit.Point, 0);
-            label3.Location = new Point(7, 183);
+            label3.Location = new Point(7, 242);
             label3.Name = "label3";
             label3.Size = new Size(155, 17);
             label3.TabIndex = 13;
@@ -151,7 +185,7 @@
             // 
             // btnViewResearchTemplate
             // 
-            btnViewResearchTemplate.Location = new Point(601, 129);
+            btnViewResearchTemplate.Location = new Point(601, 188);
             btnViewResearchTemplate.Name = "btnViewResearchTemplate";
             btnViewResearchTemplate.Size = new Size(75, 23);
             btnViewResearchTemplate.TabIndex = 12;
@@ -161,7 +195,7 @@
             // 
             // txtResearchTemplateFile
             // 
-            txtResearchTemplateFile.Location = new Point(224, 129);
+            txtResearchTemplateFile.Location = new Point(224, 188);
             txtResearchTemplateFile.Name = "txtResearchTemplateFile";
             txtResearchTemplateFile.ReadOnly = true;
             txtResearchTemplateFile.Size = new Size(357, 23);
@@ -171,7 +205,7 @@
             // 
             label2.AutoSize = true;
             label2.Font = new Font("Segoe UI", 9.75F, FontStyle.Bold, GraphicsUnit.Point, 0);
-            label2.Location = new Point(7, 132);
+            label2.Location = new Point(7, 191);
             label2.Name = "label2";
             label2.Size = new Size(196, 17);
             label2.TabIndex = 10;
@@ -188,7 +222,7 @@
             // 
             // btnViewTemplate
             // 
-            btnViewTemplate.Location = new Point(601, 75);
+            btnViewTemplate.Location = new Point(601, 134);
             btnViewTemplate.Name = "btnViewTemplate";
             btnViewTemplate.Size = new Size(75, 23);
             btnViewTemplate.TabIndex = 8;
@@ -208,7 +242,7 @@
             // 
             // txtTemplateFile
             // 
-            txtTemplateFile.Location = new Point(224, 74);
+            txtTemplateFile.Location = new Point(224, 133);
             txtTemplateFile.Name = "txtTemplateFile";
             txtTemplateFile.ReadOnly = true;
             txtTemplateFile.Size = new Size(357, 23);
@@ -226,7 +260,7 @@
             // 
             label1.AutoSize = true;
             label1.Font = new Font("Segoe UI", 9.75F, FontStyle.Bold, GraphicsUnit.Point, 0);
-            label1.Location = new Point(6, 77);
+            label1.Location = new Point(6, 136);
             label1.Name = "label1";
             label1.Size = new Size(128, 17);
             label1.TabIndex = 4;
@@ -240,7 +274,7 @@
             groupBox2.Controls.Add(btnCloseExcels);
             groupBox2.Controls.Add(UnifyBtn);
             groupBox2.Controls.Add(btnGenerate);
-            groupBox2.Location = new Point(16, 304);
+            groupBox2.Location = new Point(16, 348);
             groupBox2.Name = "groupBox2";
             groupBox2.Size = new Size(149, 315);
             groupBox2.TabIndex = 5;
@@ -289,7 +323,7 @@
             // 
             // progressBar
             // 
-            progressBar.Location = new Point(175, 337);
+            progressBar.Location = new Point(175, 381);
             progressBar.Name = "progressBar";
             progressBar.Size = new Size(541, 23);
             progressBar.TabIndex = 6;
@@ -297,7 +331,7 @@
             // lblActionDisplay
             // 
             lblActionDisplay.AutoSize = true;
-            lblActionDisplay.Location = new Point(175, 313);
+            lblActionDisplay.Location = new Point(175, 357);
             lblActionDisplay.Name = "lblActionDisplay";
             lblActionDisplay.Size = new Size(0, 15);
             lblActionDisplay.TabIndex = 7;
@@ -306,7 +340,7 @@
             // 
             lstReport.FormattingEnabled = true;
             lstReport.ItemHeight = 15;
-            lstReport.Location = new Point(175, 405);
+            lstReport.Location = new Point(175, 449);
             lstReport.Name = "lstReport";
             lstReport.Size = new Size(541, 214);
             lstReport.TabIndex = 8;
@@ -314,7 +348,7 @@
             // lblReport
             // 
             lblReport.AutoSize = true;
-            lblReport.Location = new Point(175, 380);
+            lblReport.Location = new Point(175, 424);
             lblReport.Name = "lblReport";
             lblReport.Size = new Size(65, 15);
             lblReport.TabIndex = 9;
@@ -322,7 +356,7 @@
             // 
             // btnViewOutput
             // 
-            btnViewOutput.Location = new Point(570, 380);
+            btnViewOutput.Location = new Point(570, 424);
             btnViewOutput.Name = "btnViewOutput";
             btnViewOutput.Size = new Size(146, 23);
             btnViewOutput.TabIndex = 10;
@@ -335,7 +369,7 @@
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
-            ClientSize = new Size(728, 638);
+            ClientSize = new Size(728, 683);
             Controls.Add(btnViewOutput);
             Controls.Add(lblReport);
             Controls.Add(lstReport);
@@ -382,5 +416,8 @@
         private Label label2;
         private Button btnUpdateStaffList;
         private Button btnUploadStaffUpdate;
+        private Button btnViewUnifiedMaster;
+        private TextBox txtUnifiedMasterFile;
+        private Label lblUnifiedMasterFile;
     }
 }

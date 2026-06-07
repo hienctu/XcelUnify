@@ -1,9 +1,10 @@
 using Microsoft.Office.Interop.Excel;
-using XcelUnify.Helpers;
-using Range = Microsoft.Office.Interop.Excel.Range;
-using Application = Microsoft.Office.Interop.Excel.Application;
 using System.Diagnostics;
+using System.Globalization;
 using System.Runtime.InteropServices;
+using XcelUnify.Helpers;
+using Application = Microsoft.Office.Interop.Excel.Application;
+using Range = Microsoft.Office.Interop.Excel.Range;
 
 namespace XcelUnify
 {
@@ -16,6 +17,8 @@ namespace XcelUnify
         {
             InitializeComponent();
             txtMasterFile.Text = ConfigManager.Master_File;
+
+            txtUnifiedMasterFile.Text = ConfigManager.Unified_Master_File;
 
             txtTemplateFile.Text = ConfigManager.GetTemplateFile(ConfigManager.Coursework_Text);
             txtTemplateFile.ReadOnly = true;
@@ -73,8 +76,11 @@ namespace XcelUnify
             Directory.CreateDirectory(tempWorkFolder);
 
             var masterFilePath = ConfigManager.Master_File;
+            var unifiedMasterFilePath = ConfigManager.Unified_Master_File;
             string tempMasterFile = Path.Combine(tempWorkFolder, Path.GetFileName(masterFilePath));
+            string tempUnifiedMasterFile = Path.Combine(tempWorkFolder, Path.GetFileName(unifiedMasterFilePath));
             File.Copy(masterFilePath, tempMasterFile, true);
+            File.Copy(unifiedMasterFilePath, tempUnifiedMasterFile, true);
 
             // Copy all template files to the temp folder
             string[] templateFiles = { "standard-template.xlsx", "research-template.xlsx", "dual-template.xlsx" };
@@ -103,15 +109,22 @@ namespace XcelUnify
 
             Application excelApp = null;
             Workbook masterFile = null;
+            Workbook unifiedMasterFile = null;
             Worksheet worksheet = null;
+            Worksheet unifiedWorksheet = null;
             Range usedRange = null;
+            Range unifiedUsedRange = null;
 
             try
             {
                 excelApp = new Application();
                 masterFile = excelApp.Workbooks.Open(tempMasterFile);
+                unifiedMasterFile = excelApp.Workbooks.Open(tempUnifiedMasterFile);
                 worksheet = (Worksheet?)masterFile.Worksheets[1];
+                unifiedWorksheet = (Worksheet?)unifiedMasterFile.Worksheets[1];
                 usedRange = worksheet.UsedRange;
+                unifiedUsedRange = unifiedWorksheet.UsedRange;
+
                 rowCount = usedRange.Rows.Count - masterHeaderRow;
                 colCount = usedRange.Columns.Count;
 
@@ -149,7 +162,7 @@ namespace XcelUnify
 
                         if (batch.Count == batchSize)
                         {
-                            await ProcessBatchAsync(batch, excelApp, maxRows, tempWorkFolder, tempOutputDir);
+                            await ProcessBatchAsync(batch, excelApp, maxRows, tempWorkFolder, tempOutputDir, unifiedWorksheet);
                             batch.Clear();
                             GC.Collect();
                         }
@@ -158,7 +171,7 @@ namespace XcelUnify
                     // Process any remaining rows
                     if (batch.Count > 0)
                     {
-                        await ProcessBatchAsync(batch, excelApp, maxRows, tempWorkFolder, tempOutputDir);
+                        await ProcessBatchAsync(batch, excelApp, maxRows, tempWorkFolder, tempOutputDir, unifiedWorksheet);
                         batch.Clear();
                         GC.Collect();
                     }
@@ -230,15 +243,15 @@ namespace XcelUnify
             }
         }
 
-        private async Task ProcessBatchAsync(List<Dictionary<string, string>> batch, Application excelApp, int numberRowsToGenerate, string tempWorkFolder, string tempOutputDir)
+        private async Task ProcessBatchAsync(List<Dictionary<string, string>> batch, Application excelApp, int numberRowsToGenerate, string tempWorkFolder, string tempOutputDir, Worksheet unifiedMasterDataSheet = null)
         {
             foreach (var row in batch)
             {
-                await ProcessRow(row, excelApp, numberRowsToGenerate, tempWorkFolder, tempOutputDir);
+                await ProcessRow(row, excelApp, numberRowsToGenerate, tempWorkFolder, tempOutputDir, unifiedMasterDataSheet);
             }
         }
 
-        private async Task ProcessRow(Dictionary<string, string> row, Application excelApp, int numberRowsToGenerate, string tempWorkFolder, string tempOutputDir)
+        private async Task ProcessRow(Dictionary<string, string> row, Application excelApp, int numberRowsToGenerate, string tempWorkFolder, string tempOutputDir, Worksheet unifiedWorksheet = null)
         {
             if (!row.TryGetValue(ColumnNames.SubjectCode, out var subjectCode) ||
                 !row.TryGetValue(ColumnNames.StudyPeriod, out var studyPeriod))
@@ -256,10 +269,27 @@ namespace XcelUnify
 
             Workbook workbook = null;
             Worksheet dataSheet = null;
+            Worksheet mainSheet = null;
+            Worksheet staffListSheet = null;
 
             var safeSubjectCode = string.Concat(subjectCode.Split(Path.GetInvalidFileNameChars())).ToLowerInvariant();
             var safeStudyPeriod = string.Concat(studyPeriod.Split(Path.GetInvalidFileNameChars())).ToLowerInvariant();
-            var fileName = $"{safeSubjectCode}_{safeStudyPeriod}.xlsx";
+            var identifier = $"{safeSubjectCode}_{safeStudyPeriod}";
+            var fileName = $"{identifier}.xlsx";
+
+            //Filter the unified master data column D with value identifier
+           
+            Range filterRange = null;
+            Range filteredRange = null;
+            Range staffListRange = null;
+            if (unifiedWorksheet != null)
+            {
+                filterRange = unifiedWorksheet.UsedRange;
+                //filter by subject code column 1 and stdy period column 3
+                filterRange.AutoFilter(1, safeSubjectCode.Trim());
+                filterRange.AutoFilter(3, safeStudyPeriod.Trim());
+                filteredRange = filterRange.SpecialCells(XlCellType.xlCellTypeVisible);
+            }
 
             try
             {
@@ -320,7 +350,123 @@ namespace XcelUnify
 
                 dataSheet.Visible = XlSheetVisibility.xlSheetVeryHidden;
 
+                if (filteredRange != null)
+                {
+                    mainSheet = (Worksheet)workbook.Worksheets[1];
+                    mainSheet.Unprotect(ConfigManager.Template_File_Password);
+                    staffListSheet = (Worksheet)workbook.Worksheets[ConfigManager.StaffList_Sheet_Name];
+
+                    if (staffListSheet != null)
+                    {
+                        staffListRange = staffListSheet.Columns[5];
+                        staffListSheet.Unprotect(ConfigManager.Template_File_Password);
+                    }
+
+                    FindStaffRanges(mainSheet, out int startRow, out int endRow, out int otherStaffStartRow, out int otherStaffEndRow);
+
+                    //copy the filter range into dataSheet starting from B24
+                    int rows = filteredRange.Rows.Count;
+                    int cols = filteredRange.Columns.Count;
+                    //row 1 is header, so start from row 2
+                    for (int r = 2; r <= rows; r++)
+                    {
+                        //Staff name in column 6
+                        string staffName = filteredRange.Cells[r,6]?.Value2?.ToString();
+                        if (string.IsNullOrWhiteSpace(staffName))
+                        {
+                            continue; // Skip rows where column F is empty
+                        }
+                        else
+                        {
+                            if (string.Equals(staffName.Trim(), ConfigManager.SafesStaff_Label, StringComparison.OrdinalIgnoreCase))
+                            {
+                                for (int c = 3; c <= 12; c++)
+                                {
+                                    mainSheet.Cells[otherStaffStartRow, c] = filteredRange.Cells[r, c + 4]?.Value2;
+                                }
+                            }
+                            else if (string.Equals(staffName.Trim(), ConfigManager.Casual_Lecturers, StringComparison.OrdinalIgnoreCase))
+                            {
+                                for (int c = 3; c <= 12; c++)
+                                {
+                                    mainSheet.Cells[otherStaffStartRow + 1, c] = filteredRange.Cells[r, c + 4]?.Value2;
+                                }
+                            }
+                            else if (string.Equals(staffName.Trim(), ConfigManager.Casual_Tutors, StringComparison.OrdinalIgnoreCase))
+                            {
+                                for (int c = 3; c <= 12; c++)
+                                {
+                                    mainSheet.Cells[otherStaffStartRow + 2, c] = filteredRange.Cells[r, c + 4]?.Value2;
+                                }
+                            }
+                            else
+                            {
+                                //Find staffname in staff list cloumn 5, from row 4
+                                //if not exist then insert the staff name into staff list 
+                                if (staffListRange != null)
+                                {
+                                    Range found = staffListRange.Find(staffName, LookIn: XlFindLookIn.xlValues, LookAt: XlLookAt.xlWhole);
+                                    if (found == null)
+                                    {
+                                        int newRow = FindFirstEmptyRowInColumn(staffListSheet, 5, 4);
+                                        staffListSheet.Cells[newRow, 5] = staffName;
+
+
+                                        // Create the data validation formula
+                                        for (int i = startRow; i <= endRow; i++)
+                                        {
+                                            Range cell = mainSheet.Cells[i, 2] as Range;
+                                            if (cell != null)
+                                            {
+                                                try
+                                                {
+                                                    string formula = $"='{ConfigManager.StaffList_Sheet_Name}'!$E$4:$E${newRow + 3}";
+                                                    // Add data validation
+                                                    cell.Validation.Delete(); // Remove any existing validation
+                                                    cell.Validation.Add(
+                                                        XlDVType.xlValidateList,
+                                                        XlDVAlertStyle.xlValidAlertStop,
+                                                        XlFormatConditionOperator.xlBetween,
+                                                        formula,
+                                                        Type.Missing);
+                                                    cell.Validation.IgnoreBlank = true;
+                                                    cell.Validation.InCellDropdown = true;
+                                                }
+                                                catch (Exception ex)
+                                                {
+                                                    Debug.WriteLine($"Failed to set data validation for cell {cell.Address}: {ex.Message}");
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                mainSheet.Cells[startRow, 2] = staffName;
+                                for (int c = 3; c <= 12; c++)
+                                {
+                                    try
+                                    {
+                                        string val = GetCellValueAsString(filteredRange.Cells[r, c + 4]);
+                                        mainSheet.Cells[startRow, c] = val;
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        Debug.WriteLine($"Failed to write value for staff {staffName} at main sheet row {startRow}, column {c}: {ex.Message}");
+                                    }
+                                }
+                                startRow++;
+                            }
+                        }
+                    }
+                }
+
+                //Remove filter
+                unifiedWorksheet.AutoFilterMode = false;
+
+
                 //Protect the workbook again
+                mainSheet.Protect(ConfigManager.Template_File_Password);
+                staffListSheet?.Protect(ConfigManager.Template_File_Password);
                 workbook.Protect(ConfigManager.Template_File_Password);
 
                 // Save changes
@@ -357,6 +503,8 @@ namespace XcelUnify
             {
                 // Release COM objects
                 if (dataSheet != null) System.Runtime.InteropServices.Marshal.ReleaseComObject(dataSheet);
+                if (mainSheet != null) System.Runtime.InteropServices.Marshal.ReleaseComObject(mainSheet);
+                if (staffListSheet != null) System.Runtime.InteropServices.Marshal.ReleaseComObject(staffListSheet);
                 if (workbook != null)
                 {
                     workbook.Close(false);
@@ -429,7 +577,7 @@ namespace XcelUnify
                 {
                     "Subject Code", "Subject Title", "Study Period", "Est. Enrolment", "% Allocation",
                     "Staff Name", "Coordinator", "Lecture Initial", "Lecture Repeat", "Tute/WS Initial", "Tute/WS Repeat",
-                    "Practical Initial", "Practical Repeat", "FieldTrip/Excursion", "Marking"
+                    "Practical Initial", "Practical Repeat", "FieldTrip/Excursion Lead", "FieldTrip/Excursion Assisting", "Marking"
                 };
 
                 for (int col = 1; col <= headers.Length; col++)
@@ -465,45 +613,8 @@ namespace XcelUnify
                             var allocatedValue = (srcWs.Range[ConfigManager.Allocated_Overall_Address] as Range)?.Value2?.ToString();
                             decimal resultAllocation;
                             allocatedPercent = decimal.TryParse(allocatedValue, out resultAllocation) ? Math.Round(resultAllocation, 1) : 0;
-                            // Assuming labels are in column A
-                            for (int row = 1; row <= srcWs.UsedRange.Rows.Count; row++)
-                            {
-                                var cellValue = (srcWs.Cells[row, 2] as Range)?.Value2?.ToString();
 
-                                if (cellValue != null)
-                                {
-                                    if (cellValue.Trim().ToLower() == ConfigManager.SafesStaff_Label.Trim().ToLower())
-                                    {
-                                        startRow = row + 2; // Start row is the row after the label
-                                    }
-                                    else if (cellValue.Contains(ConfigManager.TotalHrs_Label, StringComparison.OrdinalIgnoreCase)
-                                                && startRow > 0 && row > startRow)
-                                    {
-                                        endRow = row - 1; // End row is the row before this label
-                                        break;
-                                    }
-                                }
-                            }
-                            for (int row = endRow + 1; row <= srcWs.UsedRange.Rows.Count; row++)
-                            {
-                                var cellValue = (srcWs.Cells[row, 2] as Range)?.Value2?.ToString();
-
-                                if (cellValue != null)
-                                {
-                                    if (cellValue.Trim().ToLower() == ConfigManager.OtherStaff_Label.Trim().ToLower())
-                                    {
-                                        otherStaffStartRow = row + 2; // Start row is the row after the label
-                                    }
-                                    else if (cellValue.Contains(ConfigManager.TotalHrs_Label, StringComparison.OrdinalIgnoreCase)
-                                                && otherStaffStartRow > 0
-                                                && otherStaffStartRow > startRow
-                                                && row > otherStaffStartRow)
-                                    {
-                                        otherStaffEndRow = row - 1; // End row is the row before this label
-                                        break; // Exit loop once both labels are found
-                                    }
-                                }
-                            }
+                            FindStaffRanges(srcWs, out startRow, out endRow, out otherStaffStartRow, out otherStaffEndRow); 
 
                             if (startRow == 0 || endRow == 0)
                             {
@@ -868,7 +979,7 @@ namespace XcelUnify
 
 
             /* Open after testing */
-            
+
             // 1. Create temp working folder
             string timestamp = DateTime.Now.ToString("yyyyMMddHHmmss");
             string tempWorkFolder = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Working", $"UpdateStaff_TempWork_{timestamp}");
@@ -1246,6 +1357,169 @@ namespace XcelUnify
                 {
                     return;
                 }
+            }
+        }
+
+        private void btnViewUnifiedMaster_Click(object sender, EventArgs e)
+        {
+            Process.Start("explorer.exe", Path.GetDirectoryName(txtUnifiedMasterFile.Text));
+        }
+
+        // Add this helper inside the Main class (near other private helpers)
+        private void FindStaffRanges(Worksheet srcWs, out int startRow, out int endRow, out int otherStaffStartRow, out int otherStaffEndRow)
+        {
+            startRow = 0;
+            endRow = 0;
+            otherStaffStartRow = 0;
+            otherStaffEndRow = 0;
+
+            try
+            {
+                int totalRows = srcWs.UsedRange.Rows.Count;
+
+                // Find SafesStaff start and end
+                for (int row = 1; row <= totalRows; row++)
+                {
+                    var cellValue = (srcWs.Cells[row, 2] as Range)?.Value2?.ToString();
+                    if (string.IsNullOrWhiteSpace(cellValue)) continue;
+
+                    var txt = cellValue.Trim();
+                    if (string.Equals(txt, ConfigManager.SafesStaff_Label.Trim(), StringComparison.OrdinalIgnoreCase))
+                    {
+                        startRow = row + 2; // Start row is the row after the label
+                    }
+                    else if (txt.IndexOf(ConfigManager.TotalHrs_Label, StringComparison.OrdinalIgnoreCase) >= 0
+                             && startRow > 0 && row > startRow)
+                    {
+                        endRow = row - 1; // End row is the row before this label
+                        break;
+                    }
+                }
+
+                // Find OtherStaff start and end (search after endRow if available)
+                int searchStart = endRow > 0 ? endRow + 1 : 1;
+                for (int row = searchStart; row <= totalRows; row++)
+                {
+                    var cellValue = (srcWs.Cells[row, 2] as Range)?.Value2?.ToString();
+                    if (string.IsNullOrWhiteSpace(cellValue)) continue;
+
+                    var txt = cellValue.Trim();
+                    if (string.Equals(txt, ConfigManager.OtherStaff_Label.Trim(), StringComparison.OrdinalIgnoreCase))
+                    {
+                        otherStaffStartRow = row + 2; // Start row is the row after the label
+                    }
+                    else if (txt.IndexOf(ConfigManager.TotalHrs_Label, StringComparison.OrdinalIgnoreCase) >= 0
+                             && otherStaffStartRow > 0
+                             && otherStaffStartRow > startRow
+                             && row > otherStaffStartRow)
+                    {
+                        otherStaffEndRow = row - 1; // End row is the row before this label
+                        break;
+                    }
+                }
+            }
+            catch (COMException comEx)
+            {
+                Debug.WriteLine($"FindStaffRanges COM error: {comEx.Message}");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"FindStaffRanges error: {ex.Message}");
+            }
+        }
+
+        private int FindFirstEmptyRowInColumn(Worksheet ws, int columnIndex, int startRow)
+        {
+            if (ws == null) throw new ArgumentNullException(nameof(ws));
+            Range usedRange = null;
+            try
+            {
+                usedRange = ws.UsedRange;
+                int usedFirstRow = usedRange.Row;
+                int usedLastRow = usedFirstRow + usedRange.Rows.Count - 1;
+                int scanStart = Math.Max(startRow, usedFirstRow);
+
+                // Scan within the used area for the first empty cell in the column
+                for (int r = scanStart; r <= usedLastRow; r++)
+                {
+                    Range cell = null;
+                    try
+                    {
+                        cell = ws.Cells[r, columnIndex] as Range;
+                        var value = cell?.Value2;
+                        if (value == null || string.IsNullOrWhiteSpace(value.ToString()))
+                        {
+                            return r; // first empty row found inside used area
+                        }
+                    }
+                    finally
+                    {
+                        if (cell != null) Marshal.ReleaseComObject(cell);
+                    }
+                }
+
+                // No empty row inside used area — return next row after used area
+                return usedLastRow + 1;
+            }
+            finally
+            {
+                if (usedRange != null) Marshal.ReleaseComObject(usedRange);
+            }
+        }
+
+        private static string GetCellValueAsString(Range? cell)
+        {
+            if (cell == null) return string.Empty;
+
+            try
+            {
+                var val = cell.Value2;
+                if (val == null) return string.Empty;
+
+                // Strings
+                if (val is string s) return s.Trim();
+
+                // Booleans
+                if (val is bool b) return b ? "TRUE" : "FALSE";
+
+                // Numbers (including Excel dates as OLE Automation dates)
+                if (val is double d)
+                {
+                    // Try detect if the cell is formatted as a date
+                    try
+                    {
+                        var nf = (cell.NumberFormat as string) ?? string.Empty;
+                        var nfLower = nf.ToLowerInvariant();
+                        // crude check for date number formats (adjust if needed)
+                        if (nfLower.Contains("d") || nfLower.Contains("y") || nfLower.Contains("/") || nfLower.Contains("-"))
+                        {
+                            // treat as OLE date
+                            try
+                            {
+                                var dt = DateTime.FromOADate(d);
+                                return dt.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture).TrimEnd(' ', '0', ':');
+                            }
+                            catch
+                            {
+                                // fallback to numeric formatting if conversion fails
+                            }
+                        }
+                    }
+                    catch
+                    {
+                        // ignore NumberFormat read errors and fall back to numeric formatting
+                    }
+
+                    // numeric value
+                    return d.ToString(CultureInfo.InvariantCulture);
+                }
+
+                // Other types fallback
+                return val.ToString() ?? string.Empty;
+            }
+            finally
+            {
+                // do not release `cell` here - caller should release COM objects when appropriate
             }
         }
     }
