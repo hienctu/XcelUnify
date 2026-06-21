@@ -1,1 +1,2 @@
 From Version 1.1 (26 Oct 2025) - added new feature - Staff List Update - assuming we already have master and template files so we dont include them again here.
+Version 2.0 (30 May 2026) - add new feature - generate for 2027 templates and also populate data collected in Unified Data sheet 2026 when generating the 2027 subject files.

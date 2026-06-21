@@ -151,9 +151,9 @@
             lblUnifiedMasterFile.Font = new Font("Segoe UI", 9.75F, FontStyle.Bold, GraphicsUnit.Point, 0);
             lblUnifiedMasterFile.Location = new Point(6, 79);
             lblUnifiedMasterFile.Name = "lblUnifiedMasterFile";
-            lblUnifiedMasterFile.Size = new Size(113, 17);
+            lblUnifiedMasterFile.Size = new Size(116, 17);
             lblUnifiedMasterFile.TabIndex = 16;
-            lblUnifiedMasterFile.Text = "Master Data File:";
+            lblUnifiedMasterFile.Text = "Unified Data File:";
             // 
             // btnViewDualCampusTemplate
             // 

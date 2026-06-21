@@ -23,5 +23,9 @@
   "AllocatedOverallAddress": "K8",
 
   "GenerateFromRow": "4",
-  "GenerateToRow": "0"
+  "GenerateToRow": "0",
+
+  "NonSafesUoMStaff": "Non-SAFES UoM staff",
+  "CasualLecturers": "Casual Lecturers",
+  "CasualTutors": "Casual Tutors"
 }

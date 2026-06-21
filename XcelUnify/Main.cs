@@ -460,7 +460,7 @@ namespace XcelUnify
 
 
                 //Protect the workbook again
-                mainSheet.Protect(ConfigManager.Template_File_Password);
+                mainSheet?.Protect(ConfigManager.Template_File_Password);
                 staffListSheet?.Protect(ConfigManager.Template_File_Password);
                 workbook.Protect(ConfigManager.Template_File_Password);
 
