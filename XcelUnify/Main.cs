@@ -19,6 +19,7 @@ namespace XcelUnify
             txtMasterFile.Text = ConfigManager.Master_File;
 
             txtUnifiedMasterFile.Text = ConfigManager.Unified_Master_File;
+            txtCurrentUnifiedDataFile.Text = ConfigManager.Current_UnifiedRpt_File;
 
             txtTemplateFile.Text = ConfigManager.GetTemplateFile(ConfigManager.Coursework_Text);
             txtTemplateFile.ReadOnly = true;
@@ -281,7 +282,7 @@ namespace XcelUnify
             List<int> foundRows = new List<int>();
             if (unifiedWorksheet != null)
             {
-                foundRows = FindMatchingRowsUnifiedMaster(unifiedWorksheet, subjectCode, studyPeriod);            
+                foundRows = FindMatchingRowsUnifiedMaster(unifiedWorksheet, subjectCode, studyPeriod);
             }
 
             try
@@ -359,99 +360,99 @@ namespace XcelUnify
                     FindStaffRanges(mainSheet, out int startRow, out int endRow, out int otherStaffStartRow, out int otherStaffEndRow);
 
                     //copy the filter range into dataSheet starting from B24
-                    
-                        //row 1 is header, so start from row 2
-                        for (int r = 0; r < foundRows.Count; r++)
+
+                    //row 1 is header, so start from row 2
+                    for (int r = 0; r < foundRows.Count; r++)
+                    {
+                        var v = GetCellValueAsString(usedUnifiedMasterRange.Cells[foundRows[r], 1]);
+                        //Staff name in column 6
+                        string staffName = usedUnifiedMasterRange.Cells[foundRows[r], 6]?.Value2?.ToString();
+                        if (string.IsNullOrWhiteSpace(staffName))
                         {
-                            var v = GetCellValueAsString(usedUnifiedMasterRange.Cells[foundRows[r], 1]);
-                            //Staff name in column 6
-                            string staffName = usedUnifiedMasterRange.Cells[foundRows[r], 6]?.Value2?.ToString();
-                            if (string.IsNullOrWhiteSpace(staffName))
+                            continue; // Skip rows where column F is empty
+                        }
+                        else
+                        {
+                            if (string.Equals(staffName.Trim(), ConfigManager.Non_Safes_UoM_Staff, StringComparison.OrdinalIgnoreCase))
                             {
-                                continue; // Skip rows where column F is empty
+                                for (int c = 3; c <= 12; c++)
+                                {
+                                    mainSheet.Cells[otherStaffStartRow, c] = usedUnifiedMasterRange.Cells[foundRows[r], c + 4]?.Value2;
+                                }
+                            }
+                            else if (string.Equals(staffName.Trim(), ConfigManager.Casual_Lecturers, StringComparison.OrdinalIgnoreCase))
+                            {
+                                for (int c = 3; c <= 12; c++)
+                                {
+                                    mainSheet.Cells[otherStaffStartRow + 1, c] = usedUnifiedMasterRange.Cells[foundRows[r], c + 4]?.Value2;
+                                }
+                            }
+                            else if (string.Equals(staffName.Trim(), ConfigManager.Casual_Tutors, StringComparison.OrdinalIgnoreCase))
+                            {
+                                for (int c = 3; c <= 12; c++)
+                                {
+                                    mainSheet.Cells[otherStaffStartRow + 2, c] = usedUnifiedMasterRange.Cells[foundRows[r], c + 4]?.Value2;
+                                }
                             }
                             else
                             {
-                                if (string.Equals(staffName.Trim(), ConfigManager.Non_Safes_UoM_Staff, StringComparison.OrdinalIgnoreCase))
+                                //Find staffname in staff list cloumn 5, from row 4
+                                //if not exist then insert the staff name into staff list 
+                                if (staffListRange != null)
                                 {
-                                    for (int c = 3; c <= 12; c++)
+                                    Range found = staffListRange.Find(staffName, LookIn: XlFindLookIn.xlValues, LookAt: XlLookAt.xlWhole);
+                                    if (found == null)
                                     {
-                                        mainSheet.Cells[otherStaffStartRow, c] = usedUnifiedMasterRange.Cells[foundRows[r], c + 4]?.Value2;
-                                    }
-                                }
-                                else if (string.Equals(staffName.Trim(), ConfigManager.Casual_Lecturers, StringComparison.OrdinalIgnoreCase))
-                                {
-                                    for (int c = 3; c <= 12; c++)
-                                    {
-                                        mainSheet.Cells[otherStaffStartRow + 1, c] = usedUnifiedMasterRange.Cells[foundRows[r], c + 4]?.Value2;
-                                    }
-                                }
-                                else if (string.Equals(staffName.Trim(), ConfigManager.Casual_Tutors, StringComparison.OrdinalIgnoreCase))
-                                {
-                                    for (int c = 3; c <= 12; c++)
-                                    {
-                                        mainSheet.Cells[otherStaffStartRow + 2, c] = usedUnifiedMasterRange.Cells[foundRows[r], c + 4]?.Value2;
-                                    }
-                                }
-                                else
-                                {
-                                    //Find staffname in staff list cloumn 5, from row 4
-                                    //if not exist then insert the staff name into staff list 
-                                    if (staffListRange != null)
-                                    {
-                                        Range found = staffListRange.Find(staffName, LookIn: XlFindLookIn.xlValues, LookAt: XlLookAt.xlWhole);
-                                        if (found == null)
+                                        int newRow = FindFirstEmptyRowInColumn(staffListSheet, 5, 4);
+                                        staffListSheet.Cells[newRow, 5] = staffName;
+
+
+                                        // Create the data validation formula
+                                        for (int i = startRow; i <= endRow; i++)
                                         {
-                                            int newRow = FindFirstEmptyRowInColumn(staffListSheet, 5, 4);
-                                            staffListSheet.Cells[newRow, 5] = staffName;
-
-
-                                            // Create the data validation formula
-                                            for (int i = startRow; i <= endRow; i++)
+                                            Range cell = mainSheet.Cells[i, 2] as Range;
+                                            if (cell != null)
                                             {
-                                                Range cell = mainSheet.Cells[i, 2] as Range;
-                                                if (cell != null)
+                                                try
                                                 {
-                                                    try
-                                                    {
-                                                        string formula = $"='{ConfigManager.StaffList_Sheet_Name}'!$E$4:$E${newRow + 3}";
-                                                        // Add data validation
-                                                        cell.Validation.Delete(); // Remove any existing validation
-                                                        cell.Validation.Add(
-                                                            XlDVType.xlValidateList,
-                                                            XlDVAlertStyle.xlValidAlertStop,
-                                                            XlFormatConditionOperator.xlBetween,
-                                                            formula,
-                                                            Type.Missing);
-                                                        cell.Validation.IgnoreBlank = true;
-                                                        cell.Validation.InCellDropdown = true;
-                                                    }
-                                                    catch (Exception ex)
-                                                    {
-                                                        Debug.WriteLine($"Failed to set data validation for cell {cell.Address}: {ex.Message}");
-                                                    }
+                                                    string formula = $"='{ConfigManager.StaffList_Sheet_Name}'!$E$4:$E${newRow + 3}";
+                                                    // Add data validation
+                                                    cell.Validation.Delete(); // Remove any existing validation
+                                                    cell.Validation.Add(
+                                                        XlDVType.xlValidateList,
+                                                        XlDVAlertStyle.xlValidAlertStop,
+                                                        XlFormatConditionOperator.xlBetween,
+                                                        formula,
+                                                        Type.Missing);
+                                                    cell.Validation.IgnoreBlank = true;
+                                                    cell.Validation.InCellDropdown = true;
+                                                }
+                                                catch (Exception ex)
+                                                {
+                                                    Debug.WriteLine($"Failed to set data validation for cell {cell.Address}: {ex.Message}");
                                                 }
                                             }
                                         }
                                     }
-
-                                    mainSheet.Cells[startRow, 2] = staffName;
-                                    for (int c = 3; c <= 12; c++)
-                                    {
-                                        try
-                                        {
-                                            string val = GetCellValueAsString(usedUnifiedMasterRange.Cells[foundRows[r], c + 4]);
-                                            mainSheet.Cells[startRow, c] = val;
-                                        }
-                                        catch (Exception ex)
-                                        {
-                                            Debug.WriteLine($"Failed to write value for staff {staffName} at main sheet row {startRow}, column {c}: {ex.Message}");
-                                        }
-                                    }
-                                    startRow++;
                                 }
+
+                                mainSheet.Cells[startRow, 2] = staffName;
+                                for (int c = 3; c <= 12; c++)
+                                {
+                                    try
+                                    {
+                                        string val = GetCellValueAsString(usedUnifiedMasterRange.Cells[foundRows[r], c + 4]);
+                                        mainSheet.Cells[startRow, c] = val;
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        Debug.WriteLine($"Failed to write value for staff {staffName} at main sheet row {startRow}, column {c}: {ex.Message}");
+                                    }
+                                }
+                                startRow++;
                             }
-                        
+                        }
+
                     }
 
                 }
@@ -609,7 +610,7 @@ namespace XcelUnify
                             decimal resultAllocation;
                             allocatedPercent = decimal.TryParse(allocatedValue, out resultAllocation) ? Math.Round(resultAllocation, 1) : 0;
 
-                            FindStaffRanges(srcWs, out startRow, out endRow, out otherStaffStartRow, out otherStaffEndRow); 
+                            FindStaffRanges(srcWs, out startRow, out endRow, out otherStaffStartRow, out otherStaffEndRow);
 
                             if (startRow == 0 || endRow == 0)
                             {
@@ -1523,29 +1524,86 @@ namespace XcelUnify
             Worksheet worksheet,
             string subjectCode,
             string studyPeriod)
+        {
+            Range used = worksheet.UsedRange;
+
+            int rowCount = used.Rows.Count;
+
+            List<int> matchedRows = new List<int>();
+
+            string subjectTrim = subjectCode?.Trim();
+            string periodTrim = studyPeriod?.Trim();
+
+            for (int r = 2; r <= rowCount; r++) // assume header row = 1
+            {
+                var subject = (used.Cells[r, 1] as Range)?.Value2?.ToString()?.Trim();
+                var period = (used.Cells[r, 3] as Range)?.Value2?.ToString()?.Trim();
+
+                if (subject == subjectTrim &&
+                    period == periodTrim)
                 {
-                    Range used = worksheet.UsedRange;
+                    matchedRows.Add(r);
+                }
+            }
 
-                    int rowCount = used.Rows.Count;
+            return matchedRows;
+        }
 
-                    List<int> matchedRows = new List<int>();
+        private void btnStaffSummaryGenerate_Click(object sender, EventArgs e)
+        {
+            lstReport.Items.Clear();
+            Cursor = Cursors.WaitCursor;
 
-                    string subjectTrim = subjectCode?.Trim();
-                    string periodTrim = studyPeriod?.Trim();
+            Invoke(new System.Action(() =>
+            {
+                lblActionDisplay.Visible = true;
+                lblActionDisplay.Text = "Create Staff Summary files...";
+                progressBar.Visible = true;
+                progressBar.Style = ProgressBarStyle.Marquee;
+                lstReport.Visible = true;
+            }));
 
-                    for (int r = 2; r <= rowCount; r++) // assume header row = 1
-                    {
-                        var subject = (used.Cells[r, 1] as Range)?.Value2?.ToString()?.Trim();
-                        var period = (used.Cells[r, 3] as Range)?.Value2?.ToString()?.Trim();
+            //check if the unified data exists
+            if (!File.Exists(txtCurrentUnifiedDataFile.Text))
+            {
+                MessageBox.Show("Current Unified Report file does not exist. Please run the Unify process and copy the final report to the correct folder.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+            //create temp folder for staff summary generation
+            string timestamp = DateTime.Now.ToString("yyyyMMddHHmmss");
+            string tempStaffSummaryFolder = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Working", $"StaffSummary_TempWork_{timestamp}");
+            //copy the unified data file to the temp folder
+            Directory.CreateDirectory(tempStaffSummaryFolder);
+            string destUnifiedDataFile = Path.Combine(tempStaffSummaryFolder, Path.GetFileName(txtCurrentUnifiedDataFile.Text));
+            File.Copy(txtCurrentUnifiedDataFile.Text, destUnifiedDataFile, true);
 
-                        if (subject == subjectTrim &&
-                            period == periodTrim)
-                        {
-                            matchedRows.Add(r);
-                        }
-                    }
+            //create a folder to store output files 
+            Directory.CreateDirectory(Path.Combine(tempStaffSummaryFolder, "Output"));
 
-                    return matchedRows;
+            // Kill all running Excel processes before starting
+            foreach (var process in System.Diagnostics.Process.GetProcessesByName("EXCEL"))
+            {
+                try { process.Kill(); }
+                catch { /* ignore if cannot kill */ }
+            }
+
+            Application excelApp = new Application();
+
+            //open the current unified data file in excel and worksheet 1
+            Workbook unifiedWb = excelApp.Workbooks.Open(destUnifiedDataFile);
+            Worksheet ws = unifiedWb.Worksheets[1] as Worksheet;
+
+
+
+
+
+
+
+        }
+
+        private void btnViewCurrentUnifiedData_Click(object sender, EventArgs e)
+        {
+            Process.Start("explorer.exe", Path.GetDirectoryName(txtCurrentUnifiedDataFile.Text));
         }
     }
 }
