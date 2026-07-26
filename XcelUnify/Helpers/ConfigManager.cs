@@ -9,6 +9,7 @@ namespace XcelUnify.Helpers
         public static string Master_File { get; private set; } = string.Empty;
         public static string Unified_Master_File { get; set; } = string.Empty;
         public static string Current_UnifiedRpt_File { get; set; } = string.Empty;
+        public static string Staff_Summary_Output_Location { get; set; } = string.Empty;
         public static string Template_File_Path { get; private set; } = string.Empty;
         public static string Template_File_Password { get; private set; } = string.Empty;
         public static string Output_Location { get; private set; } = string.Empty;
@@ -55,6 +56,8 @@ namespace XcelUnify.Helpers
                     config.TryGetValue("MasterDataFilePath", out var masterFile);
                     config.TryGetValue("UnifiedMasterDataFilePath", out var unifiedMasterFile);
                     config.TryGetValue("CurrentUnifiedRptFilePath", out var currentUnifiedRptFile);
+                    config.TryGetValue("StaffSummary", out var staffSummaryOutputLocation);
+
                     config.TryGetValue("TemplateFilePath", out var templateFilePath);
                     config.TryGetValue("Output", out var output);
                     config.TryGetValue("Unify", out var unifyFolder);
@@ -91,6 +94,10 @@ namespace XcelUnify.Helpers
                         : string.Empty;
                     Current_UnifiedRpt_File = !string.IsNullOrEmpty(currentUnifiedRptFile)
                         ? (Path.IsPathRooted(currentUnifiedRptFile) ? currentUnifiedRptFile : Path.Combine(AppContext.BaseDirectory, currentUnifiedRptFile))
+                        : string.Empty;
+
+                    Staff_Summary_Output_Location = !string.IsNullOrEmpty(staffSummaryOutputLocation)
+                        ? (Path.IsPathRooted(staffSummaryOutputLocation) ? staffSummaryOutputLocation : Path.Combine(AppContext.BaseDirectory, staffSummaryOutputLocation))
                         : string.Empty;
 
                     Template_File_Path = !string.IsNullOrEmpty(templateFilePath)

@@ -12,7 +12,7 @@ namespace XcelUnify
     {
         private string rptFolderPath;
         private string tempStaffUpdateFolder;
-
+        
         public Main()
         {
             InitializeComponent();
@@ -893,6 +893,10 @@ namespace XcelUnify
             {
                 folderPath = ConfigManager.Output_Location;
             }
+            else if (btnViewOutput.Text.Contains("Staff Summary"))
+            {
+                folderPath = ConfigManager.Staff_Summary_Output_Location;
+            }
             else
             {
                 folderPath = rptFolderPath;
@@ -1567,8 +1571,22 @@ namespace XcelUnify
             if (!File.Exists(txtCurrentUnifiedDataFile.Text))
             {
                 MessageBox.Show("Current Unified Report file does not exist. Please run the Unify process and copy the final report to the correct folder.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                Cursor = Cursors.Default;
+                progressBar.Style = ProgressBarStyle.Blocks;
+                progressBar.Visible = false;
                 return;
             }
+
+            var templatePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Data", "staff-summary.xlsx");
+            if (!File.Exists(templatePath))
+            {
+                MessageBox.Show($"Template not found: {templatePath}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                Cursor = Cursors.Default;
+                progressBar.Style = ProgressBarStyle.Blocks;
+                progressBar.Visible = false;
+                return;
+            }
+
             //create temp folder for staff summary generation
             string timestamp = DateTime.Now.ToString("yyyyMMddHHmmss");
             string tempStaffSummaryFolder = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Working", $"StaffSummary_TempWork_{timestamp}");
@@ -1578,7 +1596,8 @@ namespace XcelUnify
             File.Copy(txtCurrentUnifiedDataFile.Text, destUnifiedDataFile, true);
 
             //create a folder to store output files 
-            Directory.CreateDirectory(Path.Combine(tempStaffSummaryFolder, "Output"));
+            string outputFolder = Path.Combine(tempStaffSummaryFolder, "Output");
+            Directory.CreateDirectory(outputFolder);
 
             // Kill all running Excel processes before starting
             foreach (var process in System.Diagnostics.Process.GetProcessesByName("EXCEL"))
@@ -1587,23 +1606,249 @@ namespace XcelUnify
                 catch { /* ignore if cannot kill */ }
             }
 
-            Application excelApp = new Application();
+            Application excelApp = null;
+            Workbook unifiedWb = null;
+            Worksheet ws = null;
+            Range used = null;
 
-            //open the current unified data file in excel and worksheet 1
-            Workbook unifiedWb = excelApp.Workbooks.Open(destUnifiedDataFile);
-            Worksheet ws = unifiedWb.Worksheets[1] as Worksheet;
+            try
+            {
+                excelApp = new Application();
+                unifiedWb = excelApp.Workbooks.Open(destUnifiedDataFile);
+                ws = unifiedWb.Worksheets[1] as Worksheet;
+                used = ws.UsedRange;
 
+                int totalRows = used.Rows.Count;
+                int totalCols = used.Columns.Count;
 
+                if (totalRows < 2)
+                {
+                    MessageBox.Show("Unified file does not contain data rows.", "Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
 
+                // Read header row (row 1)
+                var headers = new List<string>(totalCols);
+                for (int c = 1; c <= totalCols; c++)
+                {
+                    headers.Add(GetCellValueAsString(used.Cells[1, c]));
+                }
 
+                // Group rows by staff name (column F = 6)
+                var staffGroups = new Dictionary<string, List<int>>(StringComparer.OrdinalIgnoreCase);
+                for (int r = 2; r <= totalRows; r++)
+                {
+                    string staffName = GetCellValueAsString(used.Cells[r, 6]); // column F
+                    if (string.IsNullOrWhiteSpace(staffName))
+                    {
+                        continue; // skip empty staff
+                    }
 
+                    staffName = staffName.Trim();
+                    if (!staffGroups.TryGetValue(staffName, out var list))
+                    {
+                        list = new List<int>();
+                        staffGroups[staffName] = list;
+                    }
+                    list.Add(r);
+                }
 
+                int processedStaff = 0;
+                int totalStaff = staffGroups.Count;
 
+                // Mapping: unified columns -> we will populate template columns starting at B9:
+                // B = Combine (Subject Code (unified col 1) and Study Period (unified col 3) combined)
+                // C = Coordinator (unified col 7)
+                // D = Lecture Initial (unified col 8)
+                // E = Lecture Repeat  (unified col 9)
+                // F = Tute/WS Initial (unified col 10)
+                // G = Tute/WS Repeat  (unified col 11)
+                // H = Practical Initial (unified col 12)
+                // I = Practical Repeat  (unified col 13)
+                // J = FieldTrip Lead     (unified col 14)
+                // K = FieldTrip Assisting(unified col 15)
+                // L = Marking            (unified col 16)
+                int[] unifiedColsForTemplate = new int[] { 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 };
+
+                // Create one file per staff
+                foreach (var kvp in staffGroups)
+                {
+                    string staffName = kvp.Key;
+                    var rows = kvp.Value;
+
+                    // sanitize file name - need to lowcase and replace space or special characters to _
+                    var safeName = SanitizeFileName(staffName);
+
+                    string outFile = Path.Combine(outputFolder, $"{safeName}.xlsx");
+                    // if file exists already append index
+                    int idx = 1;
+                    while (File.Exists(outFile))
+                    {
+                        outFile = Path.Combine(outputFolder, $"{safeName}_{idx}.xlsx");
+                        idx++;
+                    }
+
+                    Workbook outWb = null;
+                    Worksheet outWs = null;
+
+                    try
+                    {
+                        // copy the template for this staff (preserves formatting, hidden sheets, etc.)
+                        File.Copy(templatePath, outFile, overwrite: true);
+
+                        outWb = excelApp.Workbooks.Open(outFile);
+                        outWs = outWb.Worksheets[1] as Worksheet;
+                        
+                        //we need to clear the existing data in the template before writing new data
+                        Range dataRange = outWs.Range["B9:L1000"]; // Adjust the range as needed
+                        dataRange.ClearContents();
+
+                        // Put staff name into cell C2 (column 3, row 2)
+                        outWs.Cells[2, 3] = staffName;
+
+                        // Start writing subject rows at row 9 (B9 is subject code)
+                        int writeRow = 9;
+                        foreach (var srcRow in rows)
+                        {
+                            // With this combined Subject Code + Study Period value:
+                            var subjectCode = GetCellValueAsString(used.Cells[srcRow, 1]);
+                            var studyPeriod = GetCellValueAsString(used.Cells[srcRow, 3]);
+                            outWs.Cells[writeRow, 2] = string.IsNullOrWhiteSpace(studyPeriod)
+                                ? subjectCode.Trim()
+                                : $"{subjectCode.Trim()} - {studyPeriod.Trim()}";
+
+                            // Fill coordinator / lecture / tute / practical / fieldtrip / marking starting at column C (col 3)
+                            for (int i = 0; i < unifiedColsForTemplate.Length; i++)
+                            {
+                                int unifiedCol = unifiedColsForTemplate[i];
+                                int targetCol = 3 + i; // 3 => C, 4 => D, ...
+                                string val = GetCellValueAsString(used.Cells[srcRow, unifiedCol]);
+                                outWs.Cells[writeRow, targetCol] = val;
+                            }
+
+                            writeRow++;
+                        }
+
+                        // Optional: Autofit only the populated columns to preserve template formatting elsewhere
+                        //Range dataRange = outWs.Range[outWs.Cells[9, 2], outWs.Cells[Math.Max(9, writeRow - 1), 12]]; // B..L
+                        //dataRange.Columns.AutoFit();
+                        //Marshal.ReleaseComObject(dataRange);
+
+                        // Save and close
+                        outWb.Save();
+                        outWb.Close(false);
+
+                        processedStaff++;
+                        Invoke(new System.Action(() =>
+                        {
+                            lstReport.Items.Add($"[{processedStaff}/{totalStaff}] Created: {Path.GetFileName(outFile)} ({rows.Count} rows)");
+                            lblReport.Text = $"Created {processedStaff} of {totalStaff} staff summary files...";
+                        }));
+
+                    }
+                    catch (Exception ex)
+                    {
+                        Invoke(new System.Action(() =>
+                        {
+                            lstReport.Items.Add($"Error creating file for '{staffName}': {ex.Message}");
+                        }));
+                    }
+                    finally
+                    {
+                        if (outWs != null) Marshal.ReleaseComObject(outWs);
+                        if (outWb != null)
+                        {
+                            try { Marshal.ReleaseComObject(outWb); }
+                            catch { }
+                        }
+                        GC.Collect();
+                        GC.WaitForPendingFinalizers();
+                    }
+                }
+
+                //copy all files from output folder to Staff Summary Output Location overwrite existing files
+                string sharepointStaffSummaryFolder = ConfigManager.Staff_Summary_Output_Location;
+
+                if (!Directory.Exists(sharepointStaffSummaryFolder))
+                {
+                    Directory.CreateDirectory(sharepointStaffSummaryFolder);
+                }
+                else
+                {
+                    //Copy overwrite - copy all files from output folder to Staff Summary Output Location overwrite existing files
+                    foreach (var file in Directory.GetFiles(outputFolder, "*.xlsx", SearchOption.TopDirectoryOnly))
+                    {
+                        var destFile = Path.Combine(sharepointStaffSummaryFolder, Path.GetFileName(file));
+                        File.Copy(file, destFile, true); // true = overwrite existing files
+                    }
+                }
+                // Final UI update
+                Invoke(new System.Action(() =>
+                {
+                    lblActionDisplay.Text = "Staff summary generation completed.";
+                    btnViewOutput.Visible = true;
+                    btnViewOutput.Text = "View Staff Summary Folder";
+                }));
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error creating staff summaries: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            finally
+            {
+                if (used != null) Marshal.ReleaseComObject(used);
+                if (ws != null) Marshal.ReleaseComObject(ws);
+                if (unifiedWb != null)
+                {
+                    unifiedWb.Close(false);
+                    Marshal.ReleaseComObject(unifiedWb);
+                }
+                if (excelApp != null)
+                {
+                    excelApp.Quit();
+                    Marshal.ReleaseComObject(excelApp);
+                }
+
+                GC.Collect();
+                GC.WaitForPendingFinalizers();
+
+                Invoke(new System.Action(() =>
+                {
+                    Cursor = Cursors.Default;
+                    progressBar.Style = ProgressBarStyle.Blocks;
+                    progressBar.Visible = false;
+                }));
+            }
         }
 
         private void btnViewCurrentUnifiedData_Click(object sender, EventArgs e)
         {
             Process.Start("explorer.exe", Path.GetDirectoryName(txtCurrentUnifiedDataFile.Text));
+        }
+
+        private static string SanitizeFileName(string name)
+        {
+            if (string.IsNullOrWhiteSpace(name)) return "unknownstaff";
+
+            // lowercase and trim
+            var s = name.ToLowerInvariant().Trim();
+
+            // Replace any invalid filesystem characters with underscore
+            foreach (var c in Path.GetInvalidFileNameChars())
+            {
+                s = s.Replace(c, '_');
+            }
+
+            // Replace any remaining characters that are not a-z, 0-9, dot or dash with underscore
+            s = System.Text.RegularExpressions.Regex.Replace(s, @"[^a-z0-9\.\-]+", "_");
+
+            // Collapse multiple underscores into a single underscore
+            s = System.Text.RegularExpressions.Regex.Replace(s, "_{2,}", "_");
+
+            // Trim leading/trailing underscores, dots or dashes
+            s = s.Trim('_', '.', '-');
+
+            return string.IsNullOrEmpty(s) ? "unknownstaff" : s;
         }
     }
 }
