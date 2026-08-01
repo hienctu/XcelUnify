@@ -7,6 +7,7 @@ namespace XcelUnify.Helpers
     public static class ConfigManager
     {
         public static string Master_File { get; private set; } = string.Empty;
+        public static string Master_Dashboard_File { get; private set; } = string.Empty;
         public static string Unified_Master_File { get; set; } = string.Empty;
         public static string Current_UnifiedRpt_File { get; set; } = string.Empty;
         public static string Staff_Summary_Output_Location { get; set; } = string.Empty;
@@ -54,6 +55,7 @@ namespace XcelUnify.Helpers
                 if (config != null)
                 {
                     config.TryGetValue("MasterDataFilePath", out var masterFile);
+                    config.TryGetValue("MasterDashboardFilePath", out var masterDashboardFile);
                     config.TryGetValue("UnifiedMasterDataFilePath", out var unifiedMasterFile);
                     config.TryGetValue("CurrentUnifiedRptFilePath", out var currentUnifiedRptFile);
                     config.TryGetValue("StaffSummary", out var staffSummaryOutputLocation);
@@ -88,6 +90,10 @@ namespace XcelUnify.Helpers
 
                     Master_File = !string.IsNullOrEmpty(masterFile)
                         ? (Path.IsPathRooted(masterFile) ? masterFile : Path.Combine(AppContext.BaseDirectory, masterFile))
+                        : string.Empty;
+
+                    Master_Dashboard_File = !string.IsNullOrEmpty(masterDashboardFile)
+                        ? (Path.IsPathRooted(masterDashboardFile) ? masterDashboardFile : Path.Combine(AppContext.BaseDirectory, masterDashboardFile))
                         : string.Empty;
                     Unified_Master_File = !string.IsNullOrEmpty(unifiedMasterFile)
                         ? (Path.IsPathRooted(unifiedMasterFile) ? unifiedMasterFile : Path.Combine(AppContext.BaseDirectory, unifiedMasterFile))

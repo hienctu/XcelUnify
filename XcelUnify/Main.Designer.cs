@@ -33,6 +33,9 @@
             lblApplicationTitle = new Label();
             lblMasterFile = new Label();
             groupBox1 = new GroupBox();
+            btnViewMasterDashboardData = new Button();
+            txtMasterDashboard = new TextBox();
+            label5 = new Label();
             btnViewCurrentUnifiedData = new Button();
             txtCurrentUnifiedDataFile = new TextBox();
             label4 = new Label();
@@ -109,6 +112,9 @@
             // 
             // groupBox1
             // 
+            groupBox1.Controls.Add(btnViewMasterDashboardData);
+            groupBox1.Controls.Add(txtMasterDashboard);
+            groupBox1.Controls.Add(label5);
             groupBox1.Controls.Add(btnViewCurrentUnifiedData);
             groupBox1.Controls.Add(txtCurrentUnifiedDataFile);
             groupBox1.Controls.Add(label4);
@@ -130,13 +136,41 @@
             groupBox1.Controls.Add(lblMasterFile);
             groupBox1.Location = new Point(16, 57);
             groupBox1.Name = "groupBox1";
-            groupBox1.Size = new Size(700, 283);
+            groupBox1.Size = new Size(700, 317);
             groupBox1.TabIndex = 4;
             groupBox1.TabStop = false;
             // 
+            // btnViewMasterDashboardData
+            // 
+            btnViewMasterDashboardData.Location = new Point(601, 279);
+            btnViewMasterDashboardData.Name = "btnViewMasterDashboardData";
+            btnViewMasterDashboardData.Size = new Size(75, 23);
+            btnViewMasterDashboardData.TabIndex = 24;
+            btnViewMasterDashboardData.Text = "View File";
+            btnViewMasterDashboardData.UseVisualStyleBackColor = true;
+            btnViewMasterDashboardData.Click += btnViewMasterDashboardData_Click;
+            // 
+            // txtMasterDashboard
+            // 
+            txtMasterDashboard.Location = new Point(224, 279);
+            txtMasterDashboard.Name = "txtMasterDashboard";
+            txtMasterDashboard.ReadOnly = true;
+            txtMasterDashboard.Size = new Size(357, 23);
+            txtMasterDashboard.TabIndex = 23;
+            // 
+            // label5
+            // 
+            label5.AutoSize = true;
+            label5.Font = new Font("Segoe UI", 9.75F, FontStyle.Bold, GraphicsUnit.Point, 0);
+            label5.Location = new Point(6, 280);
+            label5.Name = "label5";
+            label5.Size = new Size(151, 17);
+            label5.TabIndex = 22;
+            label5.Text = "Master Dashboard File:";
+            // 
             // btnViewCurrentUnifiedData
             // 
-            btnViewCurrentUnifiedData.Location = new Point(601, 240);
+            btnViewCurrentUnifiedData.Location = new Point(601, 237);
             btnViewCurrentUnifiedData.Name = "btnViewCurrentUnifiedData";
             btnViewCurrentUnifiedData.Size = new Size(75, 23);
             btnViewCurrentUnifiedData.TabIndex = 21;
@@ -146,7 +180,7 @@
             // 
             // txtCurrentUnifiedDataFile
             // 
-            txtCurrentUnifiedDataFile.Location = new Point(224, 240);
+            txtCurrentUnifiedDataFile.Location = new Point(224, 237);
             txtCurrentUnifiedDataFile.Name = "txtCurrentUnifiedDataFile";
             txtCurrentUnifiedDataFile.ReadOnly = true;
             txtCurrentUnifiedDataFile.Size = new Size(357, 23);
@@ -156,7 +190,7 @@
             // 
             label4.AutoSize = true;
             label4.Font = new Font("Segoe UI", 9.75F, FontStyle.Bold, GraphicsUnit.Point, 0);
-            label4.Location = new Point(6, 241);
+            label4.Location = new Point(6, 238);
             label4.Name = "label4";
             label4.Size = new Size(196, 17);
             label4.TabIndex = 19;
@@ -310,7 +344,7 @@
             groupBox2.Controls.Add(btnCloseExcels);
             groupBox2.Controls.Add(UnifyBtn);
             groupBox2.Controls.Add(btnGenerate);
-            groupBox2.Location = new Point(16, 348);
+            groupBox2.Location = new Point(16, 380);
             groupBox2.Name = "groupBox2";
             groupBox2.Size = new Size(149, 315);
             groupBox2.TabIndex = 5;
@@ -369,7 +403,7 @@
             // 
             // progressBar
             // 
-            progressBar.Location = new Point(175, 381);
+            progressBar.Location = new Point(175, 413);
             progressBar.Name = "progressBar";
             progressBar.Size = new Size(541, 23);
             progressBar.TabIndex = 6;
@@ -377,7 +411,7 @@
             // lblActionDisplay
             // 
             lblActionDisplay.AutoSize = true;
-            lblActionDisplay.Location = new Point(175, 357);
+            lblActionDisplay.Location = new Point(175, 389);
             lblActionDisplay.Name = "lblActionDisplay";
             lblActionDisplay.Size = new Size(0, 15);
             lblActionDisplay.TabIndex = 7;
@@ -386,7 +420,7 @@
             // 
             lstReport.FormattingEnabled = true;
             lstReport.ItemHeight = 15;
-            lstReport.Location = new Point(175, 449);
+            lstReport.Location = new Point(175, 481);
             lstReport.Name = "lstReport";
             lstReport.Size = new Size(541, 214);
             lstReport.TabIndex = 8;
@@ -394,7 +428,7 @@
             // lblReport
             // 
             lblReport.AutoSize = true;
-            lblReport.Location = new Point(175, 424);
+            lblReport.Location = new Point(175, 456);
             lblReport.Name = "lblReport";
             lblReport.Size = new Size(65, 15);
             lblReport.TabIndex = 9;
@@ -402,7 +436,7 @@
             // 
             // btnViewOutput
             // 
-            btnViewOutput.Location = new Point(570, 424);
+            btnViewOutput.Location = new Point(570, 456);
             btnViewOutput.Name = "btnViewOutput";
             btnViewOutput.Size = new Size(146, 23);
             btnViewOutput.TabIndex = 10;
@@ -415,7 +449,7 @@
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
-            ClientSize = new Size(728, 683);
+            ClientSize = new Size(728, 707);
             Controls.Add(btnViewOutput);
             Controls.Add(lblReport);
             Controls.Add(lstReport);
@@ -469,5 +503,8 @@
         private Button btnViewCurrentUnifiedData;
         private TextBox txtCurrentUnifiedDataFile;
         private Label label4;
+        private Button btnViewMasterDashboardData;
+        private TextBox txtMasterDashboard;
+        private Label label5;
     }
 }

@@ -12,11 +12,12 @@ namespace XcelUnify
     {
         private string rptFolderPath;
         private string tempStaffUpdateFolder;
-        
+
         public Main()
         {
             InitializeComponent();
             txtMasterFile.Text = ConfigManager.Master_File;
+            txtMasterDashboard.Text = ConfigManager.Master_Dashboard_File;
 
             txtUnifiedMasterFile.Text = ConfigManager.Unified_Master_File;
             txtCurrentUnifiedDataFile.Text = ConfigManager.Current_UnifiedRpt_File;
@@ -1595,6 +1596,9 @@ namespace XcelUnify
             string destUnifiedDataFile = Path.Combine(tempStaffSummaryFolder, Path.GetFileName(txtCurrentUnifiedDataFile.Text));
             File.Copy(txtCurrentUnifiedDataFile.Text, destUnifiedDataFile, true);
 
+            string masterDashboardFile = Path.Combine(tempStaffSummaryFolder, Path.GetFileName(txtMasterDashboard.Text));
+            File.Copy(txtMasterDashboard.Text, masterDashboardFile, true);
+
             //create a folder to store output files 
             string outputFolder = Path.Combine(tempStaffSummaryFolder, "Output");
             Directory.CreateDirectory(outputFolder);
@@ -1608,14 +1612,21 @@ namespace XcelUnify
 
             Application excelApp = null;
             Workbook unifiedWb = null;
+            Workbook masterDashBoardWb = null;
             Worksheet ws = null;
+            Worksheet mDbWs = null;
             Range used = null;
 
             try
             {
                 excelApp = new Application();
-                unifiedWb = excelApp.Workbooks.Open(destUnifiedDataFile);
+                bool unprotected;
+                unifiedWb = OpenWorkbookSilent(excelApp, destUnifiedDataFile, ConfigManager.Template_File_Password, ConfigManager.Template_File_Password);//OpenWorkbookAndEnsureUnprotected(excelApp, destUnifiedDataFile, ConfigManager.Template_File_Password, out unprotected); //excelApp.Workbooks.Open(destUnifiedDataFile);
+                masterDashBoardWb = OpenWorkbookSilent(excelApp, masterDashboardFile, ConfigManager.Template_File_Password, ConfigManager.Template_File_Password);//OpenWorkbookAndEnsureUnprotected(excelApp, masterDashboardFile, ConfigManager.Template_File_Password, out unprotected);//excelApp.Workbooks.Open(masterDashboardFile);
+
                 ws = unifiedWb.Worksheets[1] as Worksheet;
+                mDbWs = masterDashBoardWb.Worksheets[1] as Worksheet;
+
                 used = ws.UsedRange;
 
                 int totalRows = used.Rows.Count;
@@ -1674,6 +1685,7 @@ namespace XcelUnify
                 foreach (var kvp in staffGroups)
                 {
                     string staffName = kvp.Key;
+
                     var rows = kvp.Value;
 
                     // sanitize file name - need to lowcase and replace space or special characters to _
@@ -1690,6 +1702,7 @@ namespace XcelUnify
 
                     Workbook outWb = null;
                     Worksheet outWs = null;
+                    Worksheet outDataWs = null;
 
                     try
                     {
@@ -1698,7 +1711,24 @@ namespace XcelUnify
 
                         outWb = excelApp.Workbooks.Open(outFile);
                         outWs = outWb.Worksheets[1] as Worksheet;
-                        
+                        outDataWs = outWb.Worksheets["Data"] as Worksheet;
+
+                        //clear the existing data in outDataWs before writing new data - row 2 onwards
+                        Range clearRange = outWs.Range["A2:Y2"]; // Adjust the range as needed
+                        clearRange.ClearContents();
+
+                        var foundStaff = FindFirstRowByStaffName(mDbWs, staffName, 1, 2); 
+                        if (foundStaff > -1)
+                        {
+                            // Copy the row to outDataWs starting at row 2
+                            for (int c = 1; c <= mDbWs.UsedRange.Columns.Count; c++)
+                            {
+                                var val = GetCellValueAsString(mDbWs.Cells[foundStaff, c]);
+                                outDataWs.Cells[2, c] = val;
+                            }
+                        }
+                        outDataWs.Visible = XlSheetVisibility.xlSheetVeryHidden;
+
                         //we need to clear the existing data in the template before writing new data
                         Range dataRange = outWs.Range["B9:L1000"]; // Adjust the range as needed
                         dataRange.ClearContents();
@@ -1798,10 +1828,17 @@ namespace XcelUnify
             {
                 if (used != null) Marshal.ReleaseComObject(used);
                 if (ws != null) Marshal.ReleaseComObject(ws);
+                if (mDbWs != null) Marshal.ReleaseComObject(mDbWs);
+                
                 if (unifiedWb != null)
                 {
                     unifiedWb.Close(false);
                     Marshal.ReleaseComObject(unifiedWb);
+                }
+                if (masterDashBoardWb != null)
+                {
+                    masterDashBoardWb.Close(false);
+                    Marshal.ReleaseComObject(masterDashBoardWb);
                 }
                 if (excelApp != null)
                 {
@@ -1850,5 +1887,198 @@ namespace XcelUnify
 
             return string.IsNullOrEmpty(s) ? "unknownstaff" : s;
         }
+
+        private void btnViewMasterDashboardData_Click(object sender, EventArgs e)
+        {
+            Process.Start("explorer.exe", Path.GetDirectoryName(txtMasterDashboard.Text));
+        }
+
+        // Add inside the `Main` class near other private helpers
+        private Workbook OpenWorkbookAndEnsureUnprotected(Application excelApp, string filePath, string password, out bool anyUnprotected)
+        {
+            if (excelApp == null) throw new ArgumentNullException(nameof(excelApp));
+            if (string.IsNullOrWhiteSpace(filePath)) throw new ArgumentNullException(nameof(filePath));
+
+            anyUnprotected = false;
+            Workbook wb = null;
+
+            // Open workbook (read/write)
+            wb = excelApp.Workbooks.Open(filePath);
+
+            try
+            {
+                // Attempt to unprotect workbook-level protection (structure/windows).
+                // Unprotect will succeed silently if there is no protection, or throw if password is incorrect.
+                try
+                {
+                    wb.Unprotect(password);
+                    // If no exception, treat as unprotected or already unprotected
+                    anyUnprotected = true;
+                }
+                catch (COMException)
+                {
+                    // If wrong password or other COM error, we still continue to try unprotecting sheets.
+                }
+
+                // Iterate worksheets and unprotect any protected sheets
+                foreach (Worksheet ws in wb.Worksheets)
+                {
+                    try
+                    {
+                        bool isProtected = false;
+                        try
+                        {
+                            // Check common protection flags
+                            isProtected = (ws.ProtectContents || ws.ProtectDrawingObjects || ws.ProtectScenarios);
+                        }
+                        catch
+                        {
+                            // If any COM error reading flags, assume possibly protected and try to unprotect
+                            isProtected = true;
+                        }
+
+                        if (isProtected)
+                        {
+                            try
+                            {
+                                ws.Unprotect(password);
+                                anyUnprotected = true;
+                            }
+                            catch (COMException)
+                            {
+                                // ignore - wrong password or cannot unprotect; continue
+                            }
+                        }
+                    }
+                    finally
+                    {
+                        // release worksheet COM object
+                        if (ws != null) Marshal.ReleaseComObject(ws);
+                    }
+                }
+
+                return wb;
+            }
+            catch
+            {
+                // if we fail here, ensure the workbook is closed and released
+                if (wb != null)
+                {
+                    try { wb.Close(false); } catch { }
+                    Marshal.ReleaseComObject(wb);
+                }
+                throw;
+            }
+        }
+
+        private int FindFirstRowByStaffName(Worksheet ws, string staffName, int staffColumn = 1, int startRow = 2)
+        {
+            if (ws == null) throw new ArgumentNullException(nameof(ws));
+            if (string.IsNullOrWhiteSpace(staffName)) return -1;
+
+            // Simple scan: start at `startRow`, stop when cell is empty or when a match is found.
+            // from row 2 and until found or empty then exit".
+            const int ExcelMaxRows = 1_048_576;
+            var target = staffName.Trim();
+
+            for (int r = startRow; r <= ExcelMaxRows; r++)
+            {
+                Range cell = null;
+                try
+                {
+                    cell = ws.Cells[r, staffColumn] as Range;
+                    var cellValue = GetCellValueAsString(cell);
+
+                    // stop when we hit the first empty cell in the staff column
+                    if (string.IsNullOrWhiteSpace(cellValue))
+                    {
+                        break;
+                    }
+
+                    if (string.Equals(cellValue.Trim(), target, StringComparison.OrdinalIgnoreCase))
+                    {
+                        return r;
+                    }
+                }
+                finally
+                {
+                    if (cell != null) Marshal.ReleaseComObject(cell);
+                }
+            }
+
+            return -1;
+        }
+
+        // Add inside the `Main` class near other private helpers
+
+        /// <summary>
+        /// Open a workbook without user prompts by supplying open/write passwords and disabling alerts.
+        /// Attempts to unprotect workbook and sheets using the supplied password (if any).
+        /// </summary>
+        private Workbook OpenWorkbookSilent(Application excelApp, string filePath, string openPassword = null, string writePassword = null)
+        {
+            if (excelApp == null) throw new ArgumentNullException(nameof(excelApp));
+            if (string.IsNullOrWhiteSpace(filePath)) throw new ArgumentNullException(nameof(filePath));
+
+            // Suppress prompts
+            var prevDisplayAlerts = excelApp.DisplayAlerts;
+            try
+            {
+                excelApp.DisplayAlerts = false;
+                excelApp.AskToUpdateLinks = false;
+
+                object oFilename = filePath;
+                object oUpdateLinks = 0;
+                object oReadOnly = false;
+                object oFormat = Type.Missing;
+                object oPassword = string.IsNullOrEmpty(openPassword) ? Type.Missing : (object)openPassword;
+                object oWriteResPassword = string.IsNullOrEmpty(writePassword) ? Type.Missing : (object)writePassword;
+                object oIgnoreReadOnlyRecommended = true;
+                object oOrigin = Type.Missing;
+                object oDelimiter = Type.Missing;
+                object oEditable = true;
+                object oNotify = false;
+                object oConverter = Type.Missing;
+                object oAddToMru = false;
+                object oLocal = true;
+                object oCorruptLoad = Type.Missing;
+
+                Workbook wb = excelApp.Workbooks.Open(
+                    Filename: (string)oFilename,
+                    UpdateLinks: oUpdateLinks,
+                    ReadOnly: oReadOnly,
+                    Format: oFormat,
+                    Password: oPassword,
+                    WriteResPassword: oWriteResPassword,
+                    IgnoreReadOnlyRecommended: oIgnoreReadOnlyRecommended,
+                    Origin: oOrigin,
+                    Delimiter: oDelimiter,
+                    Editable: oEditable,
+                    Notify: oNotify,
+                    Converter: oConverter,
+                    AddToMru: oAddToMru,
+                    Local: oLocal,
+                    CorruptLoad: oCorruptLoad
+                );
+
+                // Try unprotecting workbook structure and sheets silently (ignore failures)
+                try { wb.Unprotect(openPassword ?? writePassword ?? string.Empty); } catch { /* ignore */ }
+
+                foreach (Worksheet ws in wb.Worksheets)
+                {
+                    try { ws.Unprotect(openPassword ?? writePassword ?? string.Empty); }
+                    catch { /* ignore */ }
+                    finally { if (ws != null) Marshal.ReleaseComObject(ws); }
+                }
+
+                return wb;
+            }
+            finally
+            {
+                // Restore DisplayAlerts in the caller when appropriate; we restore here to be safe.
+                excelApp.DisplayAlerts = prevDisplayAlerts;
+            }
+        }
+
     }
 }
