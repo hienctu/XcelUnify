@@ -62,6 +62,7 @@
             lstReport = new ListBox();
             lblReport = new Label();
             btnViewOutput = new Button();
+            label4 = new Label();
             groupBox1.SuspendLayout();
             groupBox2.SuspendLayout();
             SuspendLayout();
@@ -411,11 +412,21 @@
             btnViewOutput.Visible = false;
             btnViewOutput.Click += btnViewOutput_Click;
             // 
+            // label4
+            // 
+            label4.AutoSize = true;
+            label4.Location = new Point(688, 673);
+            label4.Name = "label4";
+            label4.Size = new Size(28, 15);
+            label4.TabIndex = 11;
+            label4.Text = "v3.0";
+            // 
             // Main
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
-            ClientSize = new Size(728, 686);
+            ClientSize = new Size(728, 697);
+            Controls.Add(label4);
             Controls.Add(btnViewOutput);
             Controls.Add(lblReport);
             Controls.Add(lstReport);
@@ -469,5 +480,6 @@
         private Button btnViewMasterDashboardData;
         private TextBox txtMasterDashboard;
         private Label label5;
+        private Label label4;
     }
 }
