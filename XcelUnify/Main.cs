@@ -20,7 +20,7 @@ namespace XcelUnify
             txtMasterDashboard.Text = ConfigManager.Master_Dashboard_File;
 
             txtUnifiedMasterFile.Text = ConfigManager.Unified_Master_File;
-            
+
             txtTemplateFile.Text = ConfigManager.GetTemplateFile(ConfigManager.Coursework_Text);
             txtTemplateFile.ReadOnly = true;
 
@@ -29,6 +29,9 @@ namespace XcelUnify
 
             txtDualCampusTemplateFile.Text = ConfigManager.GetTemplateFile(ConfigManager.DualCampus_Text);
             txtDualCampusTemplateFile.ReadOnly = true;
+
+            txtStaffSummaryTemplateFile.Text = ConfigManager.Staff_Summary_Template_File;
+            txtStaffSummaryTemplateFile.ReadOnly = true;
 
             lblActionDisplay.Visible = false;
             progressBar.Visible = false;
@@ -1578,7 +1581,7 @@ namespace XcelUnify
                 return;
             }
 
-            var templatePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Data", "staff-summary.xlsx");
+            var templatePath = txtStaffSummaryTemplateFile.Text;
             if (!File.Exists(templatePath))
             {
                 MessageBox.Show($"Template not found: {templatePath}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
@@ -1593,7 +1596,7 @@ namespace XcelUnify
             string tempStaffSummaryFolder = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Working", $"StaffSummary_TempWork_{timestamp}");
             //copy the unified data file to the temp folder
             Directory.CreateDirectory(tempStaffSummaryFolder);
-            
+
             string masterDashboardFile = Path.Combine(tempStaffSummaryFolder, Path.GetFileName(txtMasterDashboard.Text));
             File.Copy(txtMasterDashboard.Text, masterDashboardFile, true);
 
@@ -1731,7 +1734,7 @@ namespace XcelUnify
                     progressBar.Style = ProgressBarStyle.Marquee;
                     lstReport.Visible = true;
                 }));
-               
+
                 //Build template Data - End
 
                 //Start building subject rows
@@ -1927,7 +1930,7 @@ namespace XcelUnify
                 if (used != null) Marshal.ReleaseComObject(used);
                 if (ws != null) Marshal.ReleaseComObject(ws);
                 if (mDbWs != null) Marshal.ReleaseComObject(mDbWs);
-                
+
                 if (masterDashBoardWb != null)
                 {
                     masterDashBoardWb.Close(false);
@@ -2168,5 +2171,9 @@ namespace XcelUnify
             }
         }
 
+        private void btnViewStaffSummaryTemplate_Click(object sender, EventArgs e)
+        {
+            Process.Start("explorer.exe", Path.GetDirectoryName(txtStaffSummaryTemplateFile.Text));
+        }
     }
 }

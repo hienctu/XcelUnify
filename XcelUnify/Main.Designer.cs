@@ -33,6 +33,9 @@
             lblApplicationTitle = new Label();
             lblMasterFile = new Label();
             groupBox1 = new GroupBox();
+            btnViewStaffSummaryTemplate = new Button();
+            txtStaffSummaryTemplateFile = new TextBox();
+            label6 = new Label();
             btnViewMasterDashboardData = new Button();
             txtMasterDashboard = new TextBox();
             label5 = new Label();
@@ -110,6 +113,9 @@
             // 
             // groupBox1
             // 
+            groupBox1.Controls.Add(btnViewStaffSummaryTemplate);
+            groupBox1.Controls.Add(txtStaffSummaryTemplateFile);
+            groupBox1.Controls.Add(label6);
             groupBox1.Controls.Add(btnViewMasterDashboardData);
             groupBox1.Controls.Add(txtMasterDashboard);
             groupBox1.Controls.Add(label5);
@@ -131,13 +137,41 @@
             groupBox1.Controls.Add(lblMasterFile);
             groupBox1.Location = new Point(16, 57);
             groupBox1.Name = "groupBox1";
-            groupBox1.Size = new Size(700, 283);
+            groupBox1.Size = new Size(700, 320);
             groupBox1.TabIndex = 4;
             groupBox1.TabStop = false;
             // 
+            // btnViewStaffSummaryTemplate
+            // 
+            btnViewStaffSummaryTemplate.Location = new Point(601, 234);
+            btnViewStaffSummaryTemplate.Name = "btnViewStaffSummaryTemplate";
+            btnViewStaffSummaryTemplate.Size = new Size(75, 23);
+            btnViewStaffSummaryTemplate.TabIndex = 27;
+            btnViewStaffSummaryTemplate.Text = "View File";
+            btnViewStaffSummaryTemplate.UseVisualStyleBackColor = true;
+            btnViewStaffSummaryTemplate.Click += btnViewStaffSummaryTemplate_Click;
+            // 
+            // txtStaffSummaryTemplateFile
+            // 
+            txtStaffSummaryTemplateFile.Location = new Point(224, 234);
+            txtStaffSummaryTemplateFile.Name = "txtStaffSummaryTemplateFile";
+            txtStaffSummaryTemplateFile.ReadOnly = true;
+            txtStaffSummaryTemplateFile.Size = new Size(357, 23);
+            txtStaffSummaryTemplateFile.TabIndex = 26;
+            // 
+            // label6
+            // 
+            label6.AutoSize = true;
+            label6.Font = new Font("Segoe UI", 9.75F, FontStyle.Bold, GraphicsUnit.Point, 0);
+            label6.Location = new Point(7, 237);
+            label6.Name = "label6";
+            label6.Size = new Size(165, 17);
+            label6.TabIndex = 25;
+            label6.Text = "Staff Summary Template:";
+            // 
             // btnViewMasterDashboardData
             // 
-            btnViewMasterDashboardData.Location = new Point(603, 237);
+            btnViewMasterDashboardData.Location = new Point(601, 281);
             btnViewMasterDashboardData.Name = "btnViewMasterDashboardData";
             btnViewMasterDashboardData.Size = new Size(75, 23);
             btnViewMasterDashboardData.TabIndex = 24;
@@ -147,7 +181,7 @@
             // 
             // txtMasterDashboard
             // 
-            txtMasterDashboard.Location = new Point(226, 237);
+            txtMasterDashboard.Location = new Point(224, 281);
             txtMasterDashboard.Name = "txtMasterDashboard";
             txtMasterDashboard.ReadOnly = true;
             txtMasterDashboard.Size = new Size(357, 23);
@@ -157,7 +191,7 @@
             // 
             label5.AutoSize = true;
             label5.Font = new Font("Segoe UI", 9.75F, FontStyle.Bold, GraphicsUnit.Point, 0);
-            label5.Location = new Point(8, 238);
+            label5.Location = new Point(6, 282);
             label5.Name = "label5";
             label5.Size = new Size(151, 17);
             label5.TabIndex = 22;
@@ -311,7 +345,7 @@
             groupBox2.Controls.Add(btnCloseExcels);
             groupBox2.Controls.Add(UnifyBtn);
             groupBox2.Controls.Add(btnGenerate);
-            groupBox2.Location = new Point(16, 355);
+            groupBox2.Location = new Point(16, 391);
             groupBox2.Name = "groupBox2";
             groupBox2.Size = new Size(149, 315);
             groupBox2.TabIndex = 5;
@@ -370,7 +404,7 @@
             // 
             // progressBar
             // 
-            progressBar.Location = new Point(175, 388);
+            progressBar.Location = new Point(175, 424);
             progressBar.Name = "progressBar";
             progressBar.Size = new Size(541, 23);
             progressBar.TabIndex = 6;
@@ -378,7 +412,7 @@
             // lblActionDisplay
             // 
             lblActionDisplay.AutoSize = true;
-            lblActionDisplay.Location = new Point(175, 364);
+            lblActionDisplay.Location = new Point(175, 400);
             lblActionDisplay.Name = "lblActionDisplay";
             lblActionDisplay.Size = new Size(0, 15);
             lblActionDisplay.TabIndex = 7;
@@ -387,7 +421,7 @@
             // 
             lstReport.FormattingEnabled = true;
             lstReport.ItemHeight = 15;
-            lstReport.Location = new Point(175, 456);
+            lstReport.Location = new Point(175, 492);
             lstReport.Name = "lstReport";
             lstReport.Size = new Size(541, 214);
             lstReport.TabIndex = 8;
@@ -395,7 +429,7 @@
             // lblReport
             // 
             lblReport.AutoSize = true;
-            lblReport.Location = new Point(175, 431);
+            lblReport.Location = new Point(175, 467);
             lblReport.Name = "lblReport";
             lblReport.Size = new Size(65, 15);
             lblReport.TabIndex = 9;
@@ -403,7 +437,7 @@
             // 
             // btnViewOutput
             // 
-            btnViewOutput.Location = new Point(570, 431);
+            btnViewOutput.Location = new Point(570, 467);
             btnViewOutput.Name = "btnViewOutput";
             btnViewOutput.Size = new Size(146, 23);
             btnViewOutput.TabIndex = 10;
@@ -415,7 +449,7 @@
             // label4
             // 
             label4.AutoSize = true;
-            label4.Location = new Point(688, 673);
+            label4.Location = new Point(688, 709);
             label4.Name = "label4";
             label4.Size = new Size(28, 15);
             label4.TabIndex = 11;
@@ -425,7 +459,7 @@
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
-            ClientSize = new Size(728, 697);
+            ClientSize = new Size(728, 730);
             Controls.Add(label4);
             Controls.Add(btnViewOutput);
             Controls.Add(lblReport);
@@ -481,5 +515,8 @@
         private TextBox txtMasterDashboard;
         private Label label5;
         private Label label4;
+        private Button btnViewStaffSummaryTemplate;
+        private TextBox txtStaffSummaryTemplateFile;
+        private Label label6;
     }
 }

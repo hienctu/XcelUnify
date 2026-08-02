@@ -2,6 +2,7 @@
   "MasterDataFilePath": "C:\\Users\\hienc\\The University of Melbourne\\School of Agriculture, Food and Ecosystem Sciences (SAFES) - Teaching workload\\1 - Workload admin\\Data\\master.xlsx",
   "MasterDashboardFilePath": "C:\\Users\\hienc\\The University of Melbourne\\School of Agriculture, Food and Ecosystem Sciences (SAFES) - Teaching workload\\1 - Workload admin\\Data\\master-dashboard.xlsx",
   "UnifiedMasterDataFilePath": "C:\\Users\\hienc\\The University of Melbourne\\School of Agriculture, Food and Ecosystem Sciences (SAFES) - Teaching workload\\1 - Workload admin\\Data\\unified-master.xlsx",
+  "StaffSummaryTemplateFilePath": "C:\\Users\\hienc\\The University of Melbourne\\School of Agriculture, Food and Ecosystem Sciences (SAFES) - Teaching workload\\1 - Workload admin\\Data\\staff-summary.xlsx",
   "MasterDataFirstDataRow": "4",
   "BatchSizeToGenerate": "10",
 

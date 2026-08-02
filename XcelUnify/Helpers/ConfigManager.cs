@@ -10,6 +10,7 @@ namespace XcelUnify.Helpers
         public static string Master_Dashboard_File { get; private set; } = string.Empty;
         public static string Unified_Master_File { get; set; } = string.Empty;
         public static string Staff_Summary_Output_Location { get; set; } = string.Empty;
+        public static string Staff_Summary_Template_File { get; private set; } = String.Empty;
         public static string Template_File_Path { get; private set; } = string.Empty;
         public static string Template_File_Password { get; private set; } = string.Empty;
         public static string Output_Location { get; private set; } = string.Empty;
@@ -21,7 +22,6 @@ namespace XcelUnify.Helpers
         public static string Research_Text { get; private set; } = "N";
         public static string Internship_Text { get; private set; } = "N";
         public static string DualCampus_Text { get; private set; } = "N";
-        
         public static int Master_First_Data_Row { get; private set; } = 4;
         public static int Generate_From_Row { get; private set; } = 4;
         public static int Generate_To_Row { get; set; } = 0;
@@ -55,6 +55,7 @@ namespace XcelUnify.Helpers
                 {
                     config.TryGetValue("MasterDataFilePath", out var masterFile);
                     config.TryGetValue("MasterDashboardFilePath", out var masterDashboardFile);
+                    config.TryGetValue("StaffSummaryTemplateFilePath", out var staffSummaryTemplateFile);
                     config.TryGetValue("UnifiedMasterDataFilePath", out var unifiedMasterFile);
                     config.TryGetValue("StaffSummary", out var staffSummaryOutputLocation);
 
@@ -93,6 +94,11 @@ namespace XcelUnify.Helpers
                     Master_Dashboard_File = !string.IsNullOrEmpty(masterDashboardFile)
                         ? (Path.IsPathRooted(masterDashboardFile) ? masterDashboardFile : Path.Combine(AppContext.BaseDirectory, masterDashboardFile))
                         : string.Empty;
+
+                    Staff_Summary_Template_File = !string.IsNullOrEmpty(staffSummaryTemplateFile)
+                        ? (Path.IsPathRooted(staffSummaryTemplateFile) ? staffSummaryTemplateFile : Path.Combine(AppContext.BaseDirectory, staffSummaryTemplateFile))
+                        : string.Empty;
+
                     Unified_Master_File = !string.IsNullOrEmpty(unifiedMasterFile)
                         ? (Path.IsPathRooted(unifiedMasterFile) ? unifiedMasterFile : Path.Combine(AppContext.BaseDirectory, unifiedMasterFile))
                         : string.Empty;
