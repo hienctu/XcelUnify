@@ -20,8 +20,7 @@ namespace XcelUnify
             txtMasterDashboard.Text = ConfigManager.Master_Dashboard_File;
 
             txtUnifiedMasterFile.Text = ConfigManager.Unified_Master_File;
-            txtCurrentUnifiedDataFile.Text = ConfigManager.Current_UnifiedRpt_File;
-
+            
             txtTemplateFile.Text = ConfigManager.GetTemplateFile(ConfigManager.Coursework_Text);
             txtTemplateFile.ReadOnly = true;
 
@@ -1594,9 +1593,7 @@ namespace XcelUnify
             string tempStaffSummaryFolder = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Working", $"StaffSummary_TempWork_{timestamp}");
             //copy the unified data file to the temp folder
             Directory.CreateDirectory(tempStaffSummaryFolder);
-            string destUnifiedDataFile = Path.Combine(tempStaffSummaryFolder, Path.GetFileName(txtCurrentUnifiedDataFile.Text));
-            File.Copy(txtCurrentUnifiedDataFile.Text, destUnifiedDataFile, true);
-
+            
             string masterDashboardFile = Path.Combine(tempStaffSummaryFolder, Path.GetFileName(txtMasterDashboard.Text));
             File.Copy(txtMasterDashboard.Text, masterDashboardFile, true);
 
@@ -1952,11 +1949,6 @@ namespace XcelUnify
                     progressBar.Visible = false;
                 }));
             }
-        }
-
-        private void btnViewCurrentUnifiedData_Click(object sender, EventArgs e)
-        {
-            Process.Start("explorer.exe", Path.GetDirectoryName(txtCurrentUnifiedDataFile.Text));
         }
 
         private static string SanitizeFileName(string name)
